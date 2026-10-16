@@ -2,6 +2,13 @@
 
 ติดตั้ง WordPress + MariaDB + phpMyAdmin ผ่าน Docker Compose พร้อมติดตั้ง WordPress และสร้าง admin user ให้อัตโนมัติ
 
+## Quick start / เริ่มเร็ว
+
+เปิด Docker Desktop แล้วรันคำสั่งเดียว (Windows: `.\setup.ps1`, macOS/Linux/Git Bash: `./setup.sh`) จะติดตั้ง WordPress, Elementor (ฟรี),
+ปลั๊กอินเสริม, ข้อมูลตัวอย่างบล็อก และเลย์เอาต์หน้าแรกให้ครบ — Open Docker Desktop and run one command
+(Windows: `.\setup.ps1`, macOS/Linux/Git Bash: `./setup.sh`): it installs WordPress, Elementor (free), the add-on plugins, mock blog data and
+the home-page layout. Details, what was tested, and how to move the design to another WordPress: **[INSTALL-GUIDE.md](INSTALL-GUIDE.md)**.
+
 ## Services
 
 | Service      | Container    | Image              | Port (default)         |
