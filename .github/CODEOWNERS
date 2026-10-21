@@ -1,0 +1,9 @@
+# Who reviews what. Replace the placeholder usernames with the real GitHub handles.
+# The foundry is shared: both devs are affected by changes, so it needs the maintainer (and ideally a second review).
+/foundry/       @FOUNDRY_MAINTAINER
+/sites/one/     @DEV_A_SITE_ONE
+/sites/two/     @DEV_B_SITE_TWO
+# Local stack and scripts
+/setup.ps1      @FOUNDRY_MAINTAINER
+/setup.sh       @FOUNDRY_MAINTAINER
+/docker-compose.yml @FOUNDRY_MAINTAINER

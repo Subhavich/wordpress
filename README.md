@@ -4,10 +4,16 @@
 
 ## Quick start / เริ่มเร็ว
 
-เปิด Docker Desktop แล้วรันคำสั่งเดียว (Windows: `.\setup.ps1`, macOS/Linux/Git Bash: `./setup.sh`) จะติดตั้ง WordPress, Elementor (ฟรี),
-ปลั๊กอินเสริม, ข้อมูลตัวอย่างบล็อก และเลย์เอาต์หน้าแรกให้ครบ — Open Docker Desktop and run one command
-(Windows: `.\setup.ps1`, macOS/Linux/Git Bash: `./setup.sh`): it installs WordPress, Elementor (free), the add-on plugins, mock blog data and
-the home-page layout. Details, what was tested, and how to move the design to another WordPress: **[INSTALL-GUIDE.md](INSTALL-GUIDE.md)**.
+รีโปนี้เป็น **foundry** (ฐานร่วม) ของเว็บไซต์ 2 แห่ง: site one = admin-division2, site two = division2 — นักพัฒนาแต่ละคน fork แล้วทำงานในโฟลเดอร์ของเว็บตัวเอง
+(`sites/one/` หรือ `sites/two/`) เปิด Docker Desktop แล้วรัน `.\setup.ps1 -Site one|two` (Windows) หรือ `./setup.sh one|two` (macOS/Linux/Git Bash)
+
+This repo is a **foundry**: the shared base (design system, components, tooling) for two websites, **one** = admin-division2 and **two** = division2.
+Each developer forks it and works in one folder, `sites/one/` or `sites/two/`. Open Docker Desktop and run `.\setup.ps1 -Site one|two`
+(Windows) or `./setup.sh one|two` (macOS/Linux/Git Bash): it installs WordPress, Elementor (free), the add-on plugins, the foundry
+(Elementor globals, component library, a guide page) and that site's layout.
+
+- **[FOUNDRY.md](FOUNDRY.md)**: how the repo is organised and the two-developer workflow (read this first).
+- **[INSTALL-GUIDE.md](INSTALL-GUIDE.md)**: install, run, edit, hand-edit protection, moving the design to another WordPress.
 
 ## Services
 

@@ -1,16 +1,20 @@
 <#
 .SYNOPSIS
-  One-command setup: WordPress + Elementor (free) + add-on plugins + mock blog data + the bk-tm2 layout.
+  One-command setup of the FOUNDRY for one site: WordPress + Elementor (free) + add-on plugins + the shared foundry
+  (Elementor globals, component library, guide page) + that site's content and layout.
 
 .DESCRIPTION
-  Safe to re-run: every step checks what already exists.
-  Needs Docker Desktop. Run from the repo folder:   .\setup.ps1
+  Safe to re-run: every step checks what already exists, and layouts you edited by hand are kept.
+  Needs Docker Desktop. Run from the repo folder:   .\setup.ps1   (builds BOTH sites as pages /site-one/ and /site-two/)   or   .\setup.ps1 -Site one|two
   Options:
+    -Site one|two|both     which site(s) to build: one = admin-division2 (starter), two = division2, both (default)
+    SITE_SLUG              (environment variable) page slug override for the site being built, e.g. $env:SITE_SLUG='my-slug'
     -AssetsPath <folder>   folder containing logo_imm2_509x602.png (optional, used as the site logo)
-    -SkipMock              install WordPress + plugins only (no mock content, no layout)
+    -SkipMock              install WordPress + plugins only (no foundry, no site content)
     -Reset                 DESTROYS the database and WordPress files first (docker compose down -v)
 #>
 param(
+    [ValidateSet('one', 'two', 'both')][string]$Site = 'both',
     [string]$AssetsPath = '',
     [switch]$SkipMock,
     [switch]$Reset
@@ -66,14 +70,16 @@ wp theme is-installed hello-elementor; if ($LASTEXITCODE -ne 0) { wp theme insta
 wp theme activate hello-elementor | Out-Null
 wp rewrite structure '/%postname%/' --hard | Out-Null
 
-# 6. Mock data + layout
+# 6. Site content -> foundry -> site layout
 if (-not $SkipMock) {
-    $mounts = @('-v', "$PSScriptRoot\mock-data:/mock:ro")
+    $mounts = @('-v', "$PSScriptRoot\foundry:/foundry:ro", '-v', "$PSScriptRoot\sites:/sites:ro")
     if ($AssetsPath -and (Test-Path $AssetsPath)) { $mounts += @('-v', "$((Resolve-Path $AssetsPath).Path):/assets:ro") }
-    foreach ($f in 'seed.php', 'build-bk-tm2.php') {
-        Say "Running mock-data/$f"
-        docker compose run --rm -u 33 @mounts --entrypoint wp wpcli eval-file "/mock/$f" --path=/var/www/html 2>&1 |
-            Where-Object { $_ -match '^(DONE|built|elements|menu|logo|no logo|GD:|home page)|rror' }
+    $sites = if ($Site -eq 'both') { @('one', 'two') } else { @($Site) }
+    $steps = @($sites | ForEach-Object { "sites/$_/seed.php" }) + @('foundry/build-foundry.php') + @($sites | ForEach-Object { "sites/$_/build.php" })
+    foreach ($f in $steps) {
+        Say "Running $f"
+        docker compose run --rm -u 33 @mounts --entrypoint wp wpcli eval-file "/$f" --path=/var/www/html 2>&1 |
+            Where-Object { $_ -match '^(DONE|built|foundry|sections|standalone|menu|logo|no logo|GD:|home page|KEPT|guide:)|rror' }
     }
 }
 
@@ -84,3 +90,6 @@ Write-Host ''
 Write-Host "Site:      http://localhost:$port" -ForegroundColor Green
 Write-Host "Admin:     http://localhost:$port/wp-admin   (user: $($e.WP_ADMIN_USER), password is WP_ADMIN_PASSWORD in .env)" -ForegroundColor Green
 Write-Host "Elementor: http://localhost:$port/wp-admin/admin.php?page=elementor-home" -ForegroundColor Green
+if ($Site -ne 'two') { Write-Host "Site one:  http://localhost:$port/site-one/" -ForegroundColor Green }
+if ($Site -ne 'one') { Write-Host "Site two:  http://localhost:$port/site-two/" -ForegroundColor Green }
+Write-Host "Guide:     http://localhost:$port/component-guide/   (private page: log in first)" -ForegroundColor Green
