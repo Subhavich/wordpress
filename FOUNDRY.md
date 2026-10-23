@@ -82,9 +82,10 @@ It splits the 89 old "articles" by what they are: **76 news and ITA articles bec
 
 ### Putting the native Elementor design on a live site (no custom code on the site)
 
-1. `import-live.py ... --structure` also uploads the logo and a portrait placeholder from `<pack>/site-assets/` and creates the Thai **Main menu** (pages + categories) that the header widget shows. It writes `<pack>/live-ids-<site>.json`.
-2. `sites/two/export-live.php` (run on your local WordPress with the pack mounted) turns the local `/site-two` page into two files for the live site, in `<pack>/kit/`: `design-system.kit.zip` (Global Colors, Global Fonts, 1280 px width: nothing else) and `site-two.live.json` (the page as an Elementor template, with images, links and the News category re-pointed at the live site).
-3. On the live site: **Elementor > Tools > Import/Export Kit** > import the kit (design system) first, then **Templates > Saved Templates > Import** the JSON, then insert the template into a new page (Layout: Elementor Canvas, slug `site-two`).
+1. `import-live.py ... --structure` also uploads the logo and a portrait placeholder from `<pack>/site-assets/` and creates the Thai **Main menu** (pages + categories) that the header widget shows (`--menu admin` for admin-division2). It writes `<pack>/live-ids-<site>.json`.
+2. `sites/export-live.php` (run on your local WordPress with the pack mounted, `SITE_KEY=one|two`) turns the local page into `<site>.template.json`, with images, links, the menu and the News category re-pointed at the live site.
+3. On the live site: import the **design-system kit** once (Global Colors + Fonts, `foundry/kit/`), then import the template into the Elementor library and insert it into a blank Canvas page (details in `sites/one/live/README.md`). A one-page *kit* import is NOT usable in Elementor 4.3.5 (it creates an empty page).
+4. Contact Form 7 must be installed with a form titled **Contact-back form** (the page's Shortcode widget finds it by title).
 
 Site one has **no blog posts**, like the real site: just 5 pages and a menu. Not covered yet: the real homepage carousel, documents (hundreds of PDFs), video list, units list, contact details and forms.
 
