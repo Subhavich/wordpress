@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Wireframe overlap</title>
+<style>
+:root{--bg:#f4f5f7;--card:#fff;--ink:#1d2430;--mute:#5d6676;--line:#d9dde4;--same:#1f8a5b;--slot:#c78a12;--bk:#2f6fd0;--ad:#c8501d}
+@media (prefers-color-scheme:dark){:root{--bg:#14171c;--card:#1d222a;--ink:#e8ebf0;--mute:#9aa3b2;--line:#2f3642}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.45 system-ui,sans-serif}
+.wrap{max-width:1500px;margin:0 auto;padding:20px 16px 60px}
+h1{font-size:20px;margin:0 0 4px}p.sub{margin:0 0 14px;color:var(--mute)}
+.legend{display:flex;flex-wrap:wrap;gap:8px 18px;margin:0 0 18px;font-size:13px}.legend span{display:inline-flex;align-items:center;gap:6px}
+.dot{width:12px;height:12px;border-radius:3px;display:inline-block}
+.stats{display:flex;gap:10px;flex-wrap:wrap;margin:0 0 20px}.stat{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:8px 14px}.stat b{font-size:20px;display:block}
+.cols{display:grid;grid-template-columns:150px 1fr 1fr;gap:12px;position:sticky;top:0;background:var(--bg);padding:8px 0;z-index:5;font-weight:600;border-bottom:1px solid var(--line)}
+.row{display:grid;grid-template-columns:150px 1fr 1fr;gap:12px;margin:14px 0;align-items:start}
+.lab{font-size:13px;font-weight:600;padding-top:2px}.lab small{display:block;font-weight:400;color:var(--mute);margin-top:3px}
+.tag{display:inline-block;color:#fff;font-size:11px;border-radius:10px;padding:1px 8px;margin-bottom:4px}
+.cell{border:2px solid var(--c);border-radius:8px;overflow:hidden;position:relative;background:#fff}
+.cell iframe{border:0;transform-origin:0 0;pointer-events:none;display:block;position:absolute;left:0;top:0;width:1280px}
+.empty{border:2px dashed var(--line);border-radius:8px;display:flex;align-items:center;justify-content:center;color:var(--mute);text-align:center;padding:10px;min-height:70px}
+.same{--c:var(--same)}.slot{--c:var(--slot)}.bk{--c:var(--bk)}.ad{--c:var(--ad)}
+.t-same{background:var(--same)}.t-slot{background:var(--slot)}.t-bk{background:var(--bk)}.t-ad{background:var(--ad)}
+.open{font-weight:400;font-size:12px;color:var(--mute)}.open a{color:inherit}
+</style></head><body><div class="wrap">
+<h1>Wireframe overlap: bk-tm2 (site two) vs admin-tm2 (site one)</h1>
+<p class="sub">Both pages rendered from the real wireframe files in this folder and cut into matching sections. Works offline: just open this file. (Section positions were measured at 1280 px wide and are stored in the script below.)</p>
+<div class="legend">
+<span><i class="dot" style="background:var(--same)"></i>Same section, same markup (shared component)</span>
+<span><i class="dot" style="background:var(--slot)"></i>Same slot, different content</span>
+<span><i class="dot" style="background:var(--bk)"></i>Only on bk-tm2 (site two)</span>
+<span><i class="dot" style="background:var(--ad)"></i>Only on admin-tm2 (site one)</span></div>
+<div class="stats" id="stats"></div>
+<div class="cols"><div></div><div>bk-tm2 &middot; division2 (site two) <span class="open"><a href="bk-tm2.html" target="_blank">open</a></span></div><div>admin-tm2 &middot; admin-division2 (site one) <span class="open"><a href="admin-tm2.html" target="_blank">open</a></span></div></div>
+<div id="rows"></div></div>
+<script>
+const GEOM={"bk": [{"top": 0, "h": 41}, {"top": 41, "h": 74}, {"top": 115, "h": 544}, {"top": 659, "h": 876}, {"top": 1535, "h": 533}, {"top": 2067, "h": 460}, {"top": 2527, "h": 645}, {"top": 3173, "h": 599}, null, null, null, {"top": 3772, "h": 317}], "ad": [{"top": 0, "h": 41}, {"top": 41, "h": 74}, {"top": 115, "h": 621}, {"top": 735, "h": 685}, {"top": 1420, "h": 533}, null, {"top": 1953, "h": 1276}, {"top": 2682, "h": 493}, {"top": 3229, "h": 484}, {"top": 3712, "h": 764}, {"top": 4476, "h": 435}, {"top": 4911, "h": 344}], "docBk": 4089, "docAd": 5254};
+const ROWS=[
+ {l:'Contact strip',k:'same',n:'phone + email bar'},
+ {l:'Masthead + menu',k:'same',n:'logo, name, mega-menu'},
+ {l:'Hero',k:'slot',n:'bk: memorial banner placeholder; admin: airport image + title'},
+ {l:'Online services',k:'same',n:'bk has an extra row of 6 shortcuts above the cards'},
+ {l:'Commanders',k:'same',n:'3 leader cards'},
+ {l:'Gift-refusal policy',k:'bk',n:'ITA teaser + 2 documents'},
+ {l:'News',k:'slot',n:'bk: one category, filter chips, big card + small cards. admin: press releases + arrest results (empty states) + videos'},
+ {l:'Videos',k:'same',n:'same video grid and card design; own band on bk, a block inside News on admin (1 of 4 videos and the link label differ)'},
+ {l:'Document downloads',k:'ad',n:'2 lists of PDFs/manuals'},
+ {l:'Contact + feedback form',k:'ad',n:'form + complaint zone'},
+ {l:'Affiliated units',k:'ad',n:'list of subordinate units'},
+ {l:'Footer',k:'same',n:'address, quick links, map'}];
+const NAMES={same:'shared',slot:'same slot, different',bk:'only bk-tm2',ad:'only admin-tm2'};
+const cells=[];
+function mk(file,g,doc,cls){
+  if(!g){const e=document.createElement('div');e.className='empty';e.textContent='\u2014 not on this site \u2014';return e}
+  const c=document.createElement('div');c.className='cell '+cls;const f=document.createElement('iframe');f.src=file;f.setAttribute('scrolling','no');f.setAttribute('tabindex','-1');f.style.height=doc+'px';c.appendChild(f);cells.push({c:c,f:f,g:g});return c}
+function fit(o){const s=o.c.clientWidth/1280;o.f.style.transform='scale('+s+')';o.f.style.top=(-o.g.top*s)+'px';o.c.style.height=(o.g.h*s)+'px'}
+const rowsEl=document.getElementById('rows'),cnt={same:0,slot:0,bk:0,ad:0};
+ROWS.forEach((r,i)=>{cnt[r.k]++;const row=document.createElement('div');row.className='row';
+ row.innerHTML='<div class="lab"><span class="tag t-'+r.k+'">'+NAMES[r.k]+'</span><br>'+r.l+'<small>'+r.n+'</small></div>';
+ row.appendChild(mk('bk-tm2.html',GEOM.bk[i],GEOM.docBk,r.k));row.appendChild(mk('admin-tm2.html',GEOM.ad[i],GEOM.docAd,r.k));rowsEl.appendChild(row)});
+document.getElementById('stats').innerHTML=Object.entries({same:['shared component',cnt.same],slot:['same slot, different content',cnt.slot],bk:['only bk-tm2',cnt.bk],ad:['only admin-tm2',cnt.ad]}).map(function(e){return '<div class="stat"><b style="color:var(--'+e[0]+')">'+e[1][1]+'</b>'+e[1][0]+'</div>'}).join('');
+const refit=()=>cells.forEach(fit);refit();addEventListener('resize',refit);addEventListener('load',refit);
+</script></body></html>
