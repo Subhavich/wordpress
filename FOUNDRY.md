@@ -22,7 +22,7 @@ foundry/                 SHARED. Owned by the foundry maintainer. Changed by pul
   VERSION, CHANGELOG.md  bump on every change to lib.php / build-foundry.php
 sites/
   one/  seed.php build.php    site one only (dev A)
-  two/  seed.php build.php    site two only (dev B)
+  two/  seed.php build.php import-real.php extract-backup.py    site two only (dev B)
 setup.ps1 / setup.sh     one-command install:  .\setup.ps1 [-Site one|two|both]   (default: both)
 docker-compose.yml ...   the local WordPress stack
 ```
@@ -62,6 +62,19 @@ Site two's blog is **realistic placeholder** data, shaped by an audit of the rea
 | Views | median 81, max 6,280, shown on every card | similar curve (median 73, max 3,681), stored as a custom field `_mock_views`, **not displayed** (WordPress has no view counter) |
 | Dates shown in | Buddhist era (2569) | Gregorian |
 | Author | "Admin" | "Admin" |
+
+### Real content (from the backup)
+
+The placeholder blog can be replaced by the **real** one from the crawl backup (`backup.zip`, kept outside the repo, 2.9 GB):
+
+```
+# 1. backup -> import pack (89 articles, images, attachments; needs Python + beautifulsoup4)
+python -X utf8 sites/two/extract-backup.py <backup>/division2.immigration.go.th <pack-folder>
+# 2. pack -> WordPress (mount the pack as /pack; IMPORT_STATUS=draft on a live site)
+docker compose run --rm -u 33 -v "${PWD}/sites:/sites:ro" -v "<pack-folder>:/pack:ro" --entrypoint wp wpcli eval-file /sites/two/import-real.php --path=/var/www/html
+```
+
+It creates the 89 posts in their real categories (real titles, dates, view counts, bodies), uploads about 530 images and files to the Media Library and rewrites the body links, sets each post's first image as the featured image, and trashes the placeholder posts. Re-running skips what is already imported. 11 of the 100 crawled article pages are dead-link shells and are skipped; 20 of the 89 articles have no text, image or file in the backup (same as the live site). Site one has no pack: the backup holds only 4 static pages for it.
 
 Site one has **no blog posts**, like the real site: just 5 pages and a menu. Not covered yet: the real homepage carousel, documents (hundreds of PDFs), video list, units list, contact details and forms.
 
