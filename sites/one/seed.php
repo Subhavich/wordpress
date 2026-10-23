@@ -41,5 +41,11 @@ if (file_exists($logoFile) && !$find('one-logo', 'attachment') && !get_theme_mod
     $up = wp_upload_bits('logo-imm2.png', null, file_get_contents($logoFile));
     if (empty($up['error'])) { $lid = wp_insert_attachment(['post_mime_type' => 'image/png', 'post_title' => 'Site logo', 'post_status' => 'inherit'], $up['file']); wp_update_attachment_metadata($lid, wp_generate_attachment_metadata($lid, $up['file'])); update_post_meta($lid, '_mock_key', 'one-logo'); update_post_meta($lid, '_mock_data', 1); set_theme_mod('custom_logo', $lid); echo "logo set\n"; }
 }
+/* Contact-back form (Contact Form 7). The page's Shortcode widget finds it by its TITLE, so the same shortcode works on every WordPress. */
+if (class_exists('WPCF7_ContactForm') && !get_posts(['post_type' => 'wpcf7_contact_form', 'title' => 'Contact-back form', 'post_status' => 'any', 'numberposts' => 1, 'fields' => 'ids'])) {
+    $cf = WPCF7_ContactForm::get_template(['title' => 'Contact-back form']);
+    $cf->set_properties(['form' => "<label>ชื่อ [text* your-name autocomplete:given-name placeholder \"กรอกชื่อ\"]</label>\n<label>นามสกุล [text* your-surname autocomplete:family-name placeholder \"กรอกนามสกุล\"]</label>\n<label>เบอร์โทรศัพท์ [tel* your-phone placeholder \"กรอกเบอร์โทรศัพท์\"]</label>\n<label>อีเมล [email* your-email placeholder \"กรอกอีเมล\"]</label>\n<label>ข้อความ [textarea* your-message placeholder \"กรอกรายละเอียดที่ต้องการติดต่อ\"]</label>\n[acceptance consent] ข้าพเจ้ายอมรับนโยบายคุ้มครองข้อมูลส่วนบุคคล และยินยอมให้เจ้าหน้าที่ใช้ข้อมูลนี้เพื่อติดต่อกลับ [/acceptance]\n[submit \"ส่งข้อมูล\"]"]);
+    $cf->save(); echo "contact form created\n";
+}
 flush_rewrite_rules();
 echo "DONE site one seed: pages " . count($pageId) . ", site page id={$pageId['site']} (/{$siteSlug}/)\n";

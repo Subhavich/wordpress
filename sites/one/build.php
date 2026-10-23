@@ -1,13 +1,13 @@
 <?php
 /**
- * SITE ONE (admin-division2.immigration.go.th, "main บก.") - design admin-tm2. STARTER build.
+ * SITE ONE (admin-division2.immigration.go.th, "main บก.") - design admin-tm2. build.
  *
  * Builds ONE page, /site-one/ (change the slug with SITE_SLUG=...): header + sections + footer on the Elementor Canvas template, so it does
  * not use the global header/footer and can live next to site two in the same WordPress.
  *
- * Already here: Header, Footer, Status band, Online services (cards only), Leadership, Videos, all from the SHARED foundry components.
- * Left for the site-one dev: the dashed "TODO" sections (they exist only in admin-tm2). Replace each $cTodo(...) with the real section, built from the
- * foundry building blocks ($section, $grid, $stack, $heading, $text, $button, ...) or, if site two will need it too, a new foundry component.
+ * Shared foundry components: Header, Footer, Status band, Online services (cards only), Leadership, Videos (real YouTube links).
+ * Site-one-only sections (they exist only in admin-tm2) are built here from the foundry building blocks: text hero, press releases and arrest results
+ * (with empty states), downloads, contact card + Contact Form 7 form, units list. If site two ever needs one of them, move it into the foundry as a component.
  *
  * Run foundry/build-foundry.php first, then sites/one/seed.php.
  *   docker compose run --rm -u 33 -v "${PWD}/foundry:/foundry:ro" -v "${PWD}/sites:/sites:ro" --entrypoint wp wpcli eval-file /sites/one/build.php --path=/var/www/html
@@ -22,22 +22,95 @@ $structureUrl = ($id = $byKey('one-page-structure')) ? get_permalink($id) : '#';
 
 /* ======================= SECTIONS (order follows admin-tm2) ======================= */
 $body = [];
-$body[] = $cTodo('Text hero with action buttons', 'admin-tm2 opens with a text hero (arrival marker, title, intro, two buttons: "use online services" and "contact an officer") instead of a banner image.', 'paper');
+/* ---- site-one-only sections, built from the foundry building blocks ---- */
+// Text hero: arrival marker, two-line title, intro, two action buttons.
+$sHero = $section('Hero', 'primary', [
+    $stack('Hero > content', 16, [
+        $row('Hero > arrival marker', 8, [$icon('Hero > marker icon', 'fas fa-map-marker-alt', 'goldbright', 16, 16, 16), $text('Hero > marker text', '<p>ท่าอากาศยานสุวรรณภูมิ</p>', 'goldbright', 'h4label')], ['flex_justify_content' => 'center']),
+        $heading('Hero > title', 'ฝ่ายอำนวยการ<br>กองบังคับการตรวจคนเข้าเมือง ๒', 'h1', 'white', 'herotitle', 'center'),
+        $text('Hero > intro', '<p>สนับสนุนการปฏิบัติราชการของหน่วยงานในสังกัด ด้านกำลังพล งบประมาณ พัสดุ และงานสารบรรณ พร้อมให้บริการข้อมูลข่าวสารแก่ประชาชนตามหลักธรรมาภิบาล</p>', 'softtext', 'bodylg', 'center'),
+        $row('Hero > actions', 14, [
+            $button('Hero > button: online services', 'ใช้บริการออนไลน์', '#eservice', 'primary', 'secondary', 'secondary', 'primary', 'goldbright', 'center'),
+            $button('Hero > button: contact an officer', 'ติดต่อเจ้าหน้าที่', '#contact', 'white', null, 'goldbright', 'primary', 'white', 'center'),
+        ], ['flex_wrap' => 'wrap', 'flex_justify_content' => 'center']),
+    ], ['content_width' => 'boxed', 'boxed_width' => $px(860), 'flex_align_items' => 'center']),
+], '', [18, 16, 14], [80, 60, 48]);
+
+// Empty-state list section (press releases, arrest results): heading row + a dashed notice + a quiet button.
+$sEmpty = fn($name, $title, $bg, $msg, $cta, $icoName) => $section($name, $bg, [
+    $secHead($name, $title, false, 'ดูทั้งหมด'),
+    $el("$name > empty state", $M(['content_width' => 'full', 'flex_direction' => 'column', 'flex_align_items' => 'center', 'border_border' => 'dashed', 'border_width' => $dim(2), 'border_radius' => $radius(10)],
+        $C('border_color', 'rule'), $gapR(10, 10, 8), $padR($dim(34, 20), $dim(30, 18), $dim(26, 16))), [
+        $icon("$name > empty icon", $icoName, 'secondary', 34, 32, 30, 'center'),
+        $text("$name > empty message", "<p>$msg</p>", 'muted', 'body', 'center'),
+        $button("$name > archive button", $cta, '#', 'primary', null, 'primary', 'white', 'primary', 'center'),
+    ], true),
+], '', [20, 18, 16], [44, 36, 30]);
+
+// Downloads: two cards, each a list of document links plus a "view all" link.
+$docCol = fn($title, array $docs) => $el("Downloads > column: $title", $M(['content_width' => 'full', 'flex_direction' => 'column'], $card('white', 'rule'), $gapR(14, 14, 12), $padR($dim(24, 26), $dim(22, 22), $dim(20, 18))), [
+    $heading("Downloads > $title > title", $title, 'h3', 'primary', 'h3card'),
+    $divider("Downloads > $title > rule", 'rule'),
+    $iconList("Downloads > $title > document links", array_map(fn($d) => [$d, 'far fa-file-pdf', '#'], $docs), 'text', 'secondary', 'secondary', 'body'),
+    $linkButton("Downloads > $title > view all", 'ดูทั้งหมด ›', '#', 'secondary', 'primary'),
+], true);
+$sDocs = $section('Downloads', 'white', [
+    $secHead('Downloads', 'เอกสารดาวน์โหลด', false),
+    $grid('Downloads > columns grid', [2, 1, 1], [1, 2, 2], [24, 20, 16], [
+        $docCol('บริการออนไลน์และข้อมูลความรู้', ['คู่มือการใช้ระบบแจ้งที่พักอาศัย ตม. 30', 'คู่มือการแจ้งอยู่เกิน 90 วัน (ตม. 47)', 'ขั้นตอนการขออยู่ต่อในราชอาณาจักรออนไลน์', 'คำถามที่พบบ่อยสำหรับคนต่างด้าว']),
+        $docCol('เอกสารสำคัญ', ['พระราชบัญญัติคนเข้าเมือง พ.ศ. 2522', 'ประกาศเจตนารมณ์นโยบายงดรับของขวัญ', 'แผนปฏิบัติราชการประจำปีงบประมาณ 2569', 'รายงานผลการดำเนินงานประจำปี']),
+    ]),
+], 'docs', [24, 20, 18], [56, 44, 34]);
+
+// Contact: the commander's contact card + the contact-back form (Contact Form 7, found by its title).
+$sContact = $section('Contact', 'paper', [
+    $secHead('Contact', 'ติดต่อและข้อเสนอแนะ', false),
+    $grid('Contact > columns grid', [2, 1, 1], [1, 2, 2], [24, 20, 16], [
+        $el('Contact > commander card', $M(['content_width' => 'full', 'flex_direction' => 'column'], $card('white', 'rule'), $gapR(0, 0, 0)), [
+            $image('Contact > commander photo', $portraitUrl, $portraitId),
+            $stack('Contact > commander details', 6, [
+                $text('Contact > commander lead', '<p>หากไม่ได้รับความสะดวกในการติดต่อราชการ หรือมีข้อเสนอแนะและเรื่องร้องเรียน ติดต่อได้โดยตรงที่</p>', 'muted', 'body'),
+                $heading('Contact > commander name', 'ยศ ชื่อ นามสกุล (placeholder)', 'h4', 'primary', 'h3card'),
+                $text('Contact > commander position', '<p>ผู้บังคับการตรวจคนเข้าเมือง 2</p>', 'muted', 'body'),
+                $text('Contact > commander phone', '<p><strong>โทร. 0 2134 0858 ต่อ 40858</strong></p>', 'text', 'body'),
+            ], ['padding' => $dim(20, 24)]),
+        ], true),
+        $el('Contact > form card', $M(['content_width' => 'full', 'flex_direction' => 'column'], $card('white', 'rule'), $gapR(12, 12, 10), $padR($dim(26, 28), $dim(24, 24), $dim(20, 18))), [
+            $heading('Contact > form title', 'แบบฟอร์มติดต่อกลับ', 'h2', 'primary', 'h3card'),
+            $text('Contact > form intro', '<p>กรอกข้อมูลเพื่อให้เจ้าหน้าที่ติดต่อกลับภายในเวลาราชการ</p>', 'muted', 'body'),
+            $wd('Contact > contact-back form (Contact Form 7)', 'shortcode', ['shortcode' => '[contact-form-7 title="Contact-back form"]']),
+        ], true),
+    ]),
+], 'contact', [24, 20, 18], [56, 44, 34]);
+
+// Units: a grid of crest tiles, one per sub-unit.
+$units = ['กองบังคับการตรวจคนเข้าเมือง 2', 'ตม. ขาเข้า ด่าน ตม. ทอ. สุวรรณภูมิ', 'ตม. ขาออก ด่าน ตม. ทอ. สุวรรณภูมิ', 'ฝ่ายตรวจลงตรา ด่าน ตม. ทอ. สุวรรณภูมิ', 'ฝ่ายพิธีการเข้าเมือง ด่าน ตม. ทอ. สุวรรณภูมิ', 'กองกำกับการสืบสวนปราบปราม บก.ตม.2',
+          'ด่าน ตม. ทอ. กรุงเทพ', 'ด่าน ตม. ทอ. ภูเก็ต', 'ด่าน ตม. ทอ. เชียงใหม่', 'ด่าน ตม. ทอ. หาดใหญ่', 'ฝ่ายอำนวยการ บก.ตม.2'];
+$sUnits = $section('Units', 'white', [
+    $secHead('Units', 'หน่วยงานในสังกัด', false),
+    $grid('Units > tiles grid', [6, 3, 2], $rowsFor(count($units), [6, 3, 2]), [16, 14, 12], array_map(fn($u, $i) => $el('Unit tile ' . ($i + 1) . ': ' . $u, $M(['content_width' => 'full', 'flex_direction' => 'column', 'flex_align_items' => 'center', 'flex_justify_content' => 'center'], $card('white', 'rule'), $gapR(10, 10, 8), $padR($dim(20, 12), $dim(18, 12), $dim(16, 10))), [
+        $icon('Unit tile ' . ($i + 1) . ' > crest icon', 'fas fa-shield-alt', 'secondary', 34, 32, 30, 'center'),
+        $text('Unit tile ' . ($i + 1) . ' > name', "<p>$u</p>", 'text', 'small', 'center'),
+    ], true), $units, array_keys($units))),
+], '', [24, 20, 18], [56, 44, 34]);
+
+/* ---- the page, in the order of admin-tm2 ---- */
+$body[] = $sHero;
 $body[] = $cStatusBand([                                                                                         // SHARED
-    ['Office hours', 'far fa-clock', 'เวลาราชการ', 'Mon-Fri 08:30-16:30'],
-    ['Hotline', 'fas fa-phone-alt', 'สายด่วนตรวจคนเข้าเมือง', 'Hotline 0-0000 (24 h)'],
-    ['Registry office', 'far fa-envelope', 'งานสารบรรณ', 'info@example.invalid'],
+    ['Office hours', 'far fa-clock', 'เวลาราชการ', 'จันทร์–ศุกร์ 08.30–16.30 น.'],
+    ['Registry office', 'far fa-envelope', 'งานสารบรรณ', 'saraban_imm2@police.go.th'],
+    ['Location', 'fas fa-map-marker-alt', 'ที่ตั้งสำนักงาน', 'ถนนสุวรรณภูมิ สาย 4'],
 ]);
 $body[] = $cServices('บริการออนไลน์', 'Placeholder intro. Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt.', [],   // SHARED, cards-only variant
     [['E-extension', 'E-EXTENSION', 'ขออยู่ต่อในราชอาณาจักร', 'ยื่นคำร้อง'], ['90-day report (TM.47)', 'ตม. 47', 'แจ้งอยู่เกิน 90 วัน', 'แจ้งที่พักอาศัย'], ['Lodger notice (TM.30)', 'ตม. 30', 'แจ้งรับคนต่างด้าวเข้าพัก', 'แจ้งที่พักอาศัย']]);
 $body[] = $cLeadership('ผู้บังคับบัญชา', 'โครงสร้างหน่วยงาน', $structureUrl,                                            // SHARED
     [['National Police Chief', 'ผู้บัญชาการตำรวจแห่งชาติ'], ['Immigration Bureau Commander', 'ผู้บัญชาการสำนักงานตรวจคนเข้าเมือง'], ['Division Commander', 'ผู้บังคับการตรวจคนเข้าเมือง 2']], $portraitUrl, $portraitId);
-$body[] = $cTodo('Press releases (with empty state)', 'News list for "ข่าวประชาสัมพันธ์". When there are no posts it shows an empty-state block: "ยังไม่มีข่าวประชาสัมพันธ์เผยแพร่ในขณะนี้" with a link to the archive.', 'white');
-$body[] = $cTodo('Arrest results (with empty state)', 'Same pattern for "ผลการจับกุม" (this category exists on site one, not on site two).', 'paper');
-$body[] = $cVideos('วีดิทัศน์แนะนำ', 'ช่อง Immigration Bureau', 4);                                                    // SHARED
-$body[] = $cTodo('Downloads (two columns)', 'Two columns of document links: "บริการออนไลน์และข้อมูลความรู้" (manuals, FAQ) and "เอกสารสำคัญ" (Immigration Act, gift policy, annual plan, annual report), each with a "view all" link.', 'white');
-$body[] = $cTodo('Contact card + contact-back form', 'Left: the commander contact card (photo, name, position, phone). Right: contact-back form (name, surname, phone, email, message, privacy consent). Use Contact Form 7: Elementor\'s Form widget is Pro.', 'paper');
-$body[] = $cTodo('Units list (11 units)', 'The list of sub-units (หน่วยงานในสังกัด), each with the crest: arrival, departure, visa, ceremony, investigation, and the airport checkpoints.', 'white');
+$body[] = $sEmpty('Press releases', 'ข่าวประชาสัมพันธ์', 'white', 'ยังไม่มีข่าวประชาสัมพันธ์เผยแพร่ในขณะนี้<br>ข่าวใหม่จะแสดงที่นี่ทันทีเมื่อเจ้าหน้าที่เผยแพร่', 'ดูข่าวย้อนหลัง', 'far fa-paper-plane');
+$body[] = $sEmpty('Arrest results', 'ผลการจับกุม', 'paper', 'ยังไม่มีรายงานผลการจับกุมเผยแพร่ในขณะนี้', 'ดูรายงานย้อนหลัง', 'fas fa-shield-alt');
+$body[] = $cVideos('วีดิทัศน์แนะนำ', 'ช่อง Immigration Bureau', 4, [['Police Care — กฎหมายเพื่อประชาชน', 'https://www.youtube.com/watch?v=Naip6sFsP84'], ['บัตรขาเข้าดิจิทัล TDAC คืออะไร', 'https://www.youtube.com/watch?v=QSEoVloM5A0']]);   // SHARED
+$body[] = $sDocs;
+$body[] = $sContact;
+$body[] = $sUnits;
 
 /* ======================= THE PAGE: header + sections + footer (SHARED components, site-one content) ======================= */
 $header = $cHeader(['nameTh' => 'ฝ่ายอำนวยการ บก.ตม.2', 'nameEn' => 'ADMINISTRATION SUB-DIVISION', 'menu' => 'site-one-menu']);
@@ -49,6 +122,6 @@ $pageId = $save('page', 'one-page-site', 'Site one: admin-division2', $page, ['_
 
 if (class_exists('\Elementor\Plugin')) { \Elementor\Plugin::$instance->files_manager->clear_cache(); }
 if ($skipped) echo "KEPT YOUR EDITS, not overwritten: " . implode('; ', $skipped) . " (set BK_FORCE=1 to rebuild from scratch)\n";
-echo "built site ONE starter: page id=$pageId | " . get_permalink($pageId) . "\n";
+echo "built site ONE: page id=$pageId | " . get_permalink($pageId) . "\n";
 echo 'sections: ' . count($page) . ' (' . count(array_filter($page, fn($s) => strpos($s['settings']['_title'], 'TODO') === 0)) . ' TODO to build)' . "\n";
 echo 'edit in Elementor: ' . admin_url("post.php?post=$pageId&action=elementor") . "\n";

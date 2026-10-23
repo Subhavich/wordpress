@@ -16,7 +16,7 @@
  *   $cStatusBand(array $items)                 -> section   items: [[name, icon, label, value], ...] (3 recommended)
  *   $cServices($title, $intro, $shortcuts, $passes) -> section  shortcuts: [[en, icon, label]] (may be []), passes: [[en, code, name, cta]]
  *   $cLeadership($title, $linkText, $linkUrl, $roles, $photoUrl, $photoId, $placeholderName) -> section   roles: [[en, label]]
- *   $cVideos($title, $linkText, $count)        -> section
+ *   $cVideos($title, $linkText, $count, $videos) -> section   videos (optional): [[title, YouTube url], ...] -> cards link to YouTube with the video thumbnail as background
  *   $cShell($name, $bgId)                      -> section   empty section shell (outer + inner 1280 + heading row) to start a new section
  *   $cTodo($name, $note, $bgId)                -> section   clearly-labelled placeholder for a section a site still has to build
  * Building blocks: $section, $secHead, $grid, $stack, $row, $card, $heading, $text, $icon, $button, $linkButton, $divider, $iconList, $image, $wd, $el, $M, $C, $T, $rp, $px, $dim, $gapR, $padR.
@@ -41,6 +41,7 @@ $TYPE = [
     'btn' => ['Button', $SANS, '600', [15, 15, 15], 1.2], 'navitem' => ['Menu item', $SANS, '500', [15, 15, 16], 1.3],
     'statlabel' => ['Status label', $SANS, '500', [13, 13, 12], 1.3], 'statval' => ['Status value', $SANS, '700', [17, 17, 16], 1.3],
     'lanelabel' => ['Shortcut label', $SANS, '600', [14, 14, 13], 1.4],
+    'herotitle' => ['Hero title', $SERIF, '700', [44, 36, 28], 1.25],            // added in foundry 1.1.0
 ];
 
 /* ======================= tiny helpers ======================= */
@@ -192,12 +193,25 @@ $cLeadership = function ($title, $linkText, $linkUrl, array $roles, $photoUrl, $
     ], 'about');
 };
 
-// Videos: a row of play-icon cards.
-$cVideos = function ($title, $linkText, $count = 4) use ($el, $M, $C, $radius, $gapR, $padR, $dim, $rp, $px, $icon, $text, $secHead, $section, $grid, $rowsFor) {
+// Videos: a row of play-icon cards. With $videos ([[title, YouTube url], ...]) a card links to YouTube and uses the video thumbnail as its background.
+$cVideos = function ($title, $linkText, $count = 4, array $videos = []) use ($el, $M, $C, $radius, $gapR, $padR, $dim, $rp, $px, $link, $icon, $heading, $text, $secHead, $section, $grid, $rowsFor) {
     $vidEls = [];
-    for ($i = 1; $i <= $count; $i++) $vidEls[] = $el("Video card $i", $M(['content_width' => 'full', 'flex_direction' => 'column', 'flex_align_items' => 'center', 'flex_justify_content' => 'center', 'border_radius' => $radius(10), 'background_background' => 'classic'],
-        $C('background_color', 'primary'), $gapR(12, 12, 10), $padR($dim(20), $dim(18), $dim(16)), $rp('min_height', $px(190), $px(170), $px(150))), [
-        $icon("Video card $i > play icon", 'far fa-play-circle', 'goldbright', 46, 42, 38, 'center'), $text("Video card $i > title", "<p>Video title placeholder $i</p>", 'white', 'lanelabel', 'center')], true);
+    for ($i = 1; $i <= $count; $i++) {
+        $v = $videos[$i - 1] ?? null;
+        $s = $M(['content_width' => 'full', 'flex_direction' => 'column', 'flex_align_items' => 'center', 'flex_justify_content' => 'center', 'border_radius' => $radius(10), 'background_background' => 'classic'],
+            $C('background_color', 'primary'), $gapR(12, 12, 10), $padR($dim(20), $dim(18), $dim(16)), $rp('min_height', $px(190), $px(170), $px(150)));
+        $play = $icon("Video card $i > play icon", 'far fa-play-circle', 'goldbright', 46, 42, 38, 'center');
+        if ($v) {
+            $id = preg_match('~(?:v=|youtu\.be/|embed/)([\w-]{11})~', $v[1], $m) ? $m[1] : '';
+            if ($id) $s = $M($s, ['background_image' => ['url' => "https://i.ytimg.com/vi/$id/hqdefault.jpg", 'id' => '', 'size' => ''], 'background_position' => 'center center', 'background_size' => 'cover', 'background_overlay_background' => 'classic',
+                'background_overlay_opacity' => ['unit' => 'px', 'size' => 0.55, 'sizes' => []]], $C('background_overlay_color', 'primary'));
+            $play['settings']['link'] = $link($v[1]);
+            $name = $heading("Video card $i > title", $v[0], 'h3', 'white', 'lanelabel', 'center'); $name['settings']['link'] = $link($v[1]);
+        } else {
+            $name = $text("Video card $i > title", "<p>Video title placeholder $i</p>", 'white', 'lanelabel', 'center');
+        }
+        $vidEls[] = $el("Video card $i", $s, [$play, $name], true);
+    }
     return $section('Videos', 'paper', [$secHead('Videos', $title, false, $linkText), $grid('Videos > cards grid', [4, 2, 1], $rowsFor($count, [4, 2, 1]), [18, 16, 14], $vidEls)], 'videos');
 };
 
