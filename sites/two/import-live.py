@@ -11,9 +11,10 @@ Options:
   --dry-run                only print what would happen
   --limit N                import only the first N articles (try 3 first)
 
-What it does: creates the 14 categories (slug cat-<id>), uploads the images and PDF/DOCX/XLSX files to the Media Library, creates the posts
-(real title, date, category, body with the links rewritten, first image as featured image) and re-links posts that point to each other.
-Safe to re-run: posts are found by their slug (news-<nid>) and uploaded files are remembered in <pack>/import-manifest-<site>.json.
+What it does: creates the categories (slug cat-<id>) and the generated tags, uploads the images and PDF/DOCX/XLSX files to the Media Library, creates
+the 76 news/ITA articles as POSTS (real title, date, category, tags, body with the links rewritten, first image as featured image) and the 13 static
+articles (about, contact, commanders, laws...) as PAGES, then re-links articles that point to each other.
+Safe to re-run: posts/pages are found by their slug (news-<nid> / page-<nid>) and uploaded files are remembered in <pack>/import-manifest-<site>.json.
 """
 import argparse, base64, getpass, json, mimetypes, os, re, sys, time, urllib.error, urllib.parse, urllib.request
 
@@ -57,19 +58,27 @@ if a.limit: posts = posts[:a.limit]
 me, _ = api('GET', '/wp/v2/users/me', '_fields=id,name')
 print(f'Logged in as: {me["name"]}  ->  {site}\nArticles to import: {len(posts)}  status={a.status}' + ('  (DRY RUN)' if a.dry_run else ''))
 
-# 1. categories ------------------------------------------------------------------------------------------------------
-cats = {}
-page = 1
-while True:
-    rows, hd = api('GET', '/wp/v2/categories', f'per_page=100&page={page}&_fields=id,slug,name')
-    for c in rows: cats[c['slug']] = c['id']
-    if len(rows) < 100: break
-    page += 1
+# 1. categories and tags (posts only; static articles become pages and get neither) ---------------------------------------
+def all_terms(route, key):
+    out, page = {}, 1
+    while True:
+        rows, _ = api('GET', route, f'per_page=100&page={page}&_fields=id,slug,name')
+        for c in rows: out[c[key]] = c['id']
+        if len(rows) < 100: return out
+        page += 1
+
+
+cats, tags = all_terms('/wp/v2/categories', 'slug'), all_terms('/wp/v2/tags', 'name')
 for p in posts:
+    if p['kind'] != 'post': continue
     s = f'cat-{p["cid"]}'
     if p['cid'] and s not in cats:
         if a.dry_run: print('  would create category', p['category']); cats[s] = 0; continue
         c, _ = api('POST', '/wp/v2/categories', body={'name': p['category'], 'slug': s}); cats[s] = c['id']; print('  category', p['category'])
+    for t in p['tags']:
+        if t not in tags:
+            if a.dry_run: tags[t] = 0; continue
+            r, _ = api('POST', '/wp/v2/tags', body={'name': t}); tags[t] = r['id']
 
 
 # 2. media -----------------------------------------------------------------------------------------------------------
@@ -86,14 +95,15 @@ def upload(kind, name):
     return manifest['media'][key]
 
 
-# 3. posts -----------------------------------------------------------------------------------------------------------
+# 3. posts and pages -------------------------------------------------------------------------------------------------
+manifest.setdefault('kinds', {})
+route = lambda kind: '/wp/v2/pages' if kind == 'page' else '/wp/v2/posts'
 made = skipped = imgs = docs = 0
 for i, p in enumerate(posts, 1):
-    slug = f'news-{p["nid"]}'
+    kind = p['kind']; slug = ('page-' if kind == 'page' else 'news-') + str(p['nid'])
     if str(p['nid']) in manifest['posts']: skipped += 1; continue
-    found, _ = api('GET', '/wp/v2/posts', f'slug={slug}&status=any&_fields=id')
-    if found: manifest['posts'][str(p['nid'])] = found[0]['id']; skipped += 1; continue
-    first = None
+    found, _ = api('GET', route(kind), f'slug={slug}&status=any&_fields=id')
+    if found: manifest['posts'][str(p['nid'])] = found[0]['id']; manifest['kinds'][str(p['nid'])] = kind; skipped += 1; continue
     def media(m):
         global imgs
         u = upload('media', m.group(1))
@@ -107,26 +117,33 @@ for i, p in enumerate(posts, 1):
     body = re.sub(r'@media/([^"\')\s]+)', media, p['body_html']); body = re.sub(r'@file/([^"\')\s]+)', files, body)
     feat = upload('media', p['images'][0]) if p['images'] else None
     date = (p['date'] or '2024-01-01') + f'T08:{p["nid"] % 60:02d}:00'
-    if a.dry_run: print(f'  [{i}/{len(posts)}] would create {slug}: {p["title"][:50]}'); continue
-    r, _ = api('POST', '/wp/v2/posts', body={'title': p['title'], 'content': body, 'status': a.status, 'date': date, 'slug': slug,
-                                              'categories': [cats[f'cat-{p["cid"]}']] if p['cid'] and cats.get(f'cat-{p["cid"]}') else [], 'featured_media': feat['id'] if feat else 0})
-    manifest['posts'][str(p['nid'])] = r['id']; save(); made += 1
-    print(f'  [{i}/{len(posts)}] {slug}  {p["title"][:50]}  ({len(p["images"])} img, {len(p["files"])} files)')
+    if a.dry_run: print(f'  [{i}/{len(posts)}] would create {kind} {slug}: {p["title"][:45]}  tags={p["tags"]}'); continue
+    data = {'title': p['title'], 'content': body, 'status': a.status, 'date': date, 'slug': slug, 'featured_media': feat['id'] if feat else 0}
+    if kind == 'post':
+        data['categories'] = [cats[f'cat-{p["cid"]}']] if p['cid'] and cats.get(f'cat-{p["cid"]}') else []
+        data['tags'] = [tags[t] for t in p['tags'] if tags.get(t)]
+    r, _ = api('POST', route(kind), body=data)
+    manifest['posts'][str(p['nid'])] = r['id']; manifest['kinds'][str(p['nid'])] = kind; save(); made += 1
+    print(f'  [{i}/{len(posts)}] {kind:4} {slug}  {p["title"][:45]}  ({len(p["images"])} img, {len(p["files"])} files, {len(p["tags"])} tags)')
 
 # 4. links between articles ---------------------------------------------------------------------------------------------
+firstpage = {}                                    # a category that became pages: link to its first page instead
+for p in posts:
+    if p['kind'] == 'page': firstpage.setdefault(p['cid'], manifest['posts'].get(str(p['nid'])))
 relinked = 0
 if not a.dry_run:
     for p in posts:
         pid = manifest['posts'].get(str(p['nid']))
         if not pid or not re.search(r'@(post|cat)/\d+', p['body_html']): continue
-        cur, _ = api('GET', f'/wp/v2/posts/{pid}', 'context=edit&_fields=content')
+        cur, _ = api('GET', f'{route(p["kind"])}/{pid}', 'context=edit&_fields=content')
         raw = cur['content']['raw']
         def link(m):
             if m.group(1) == 'post':
                 t = manifest['posts'].get(m.group(2)); return f'{site}/?p={t}' if t else '#'
-            c = cats.get(f'cat-{m.group(2)}'); return f'{site}/?cat={c}' if c else '#'
+            c = cats.get(f'cat-{m.group(2)}'); f = firstpage.get(int(m.group(2)))
+            return f'{site}/?cat={c}' if c else (f'{site}/?p={f}' if f else '#')
         new = re.sub(r'@(post|cat)/(\d+)', link, raw)
-        if new != raw: api('POST', f'/wp/v2/posts/{pid}', body={'content': new}); relinked += 1
+        if new != raw: api('POST', f'{route(p["kind"])}/{pid}', body={'content': new}); relinked += 1
 
-print(f'\nDONE: {made} posts created ({skipped} already there), {imgs} image refs + {docs} file refs, {relinked} posts re-linked. Status: {a.status}.')
-print('Next: review under Posts > All Posts, then publish. Revoke the application password in your profile.')
+print(f'\nDONE: {made} created ({skipped} already there), {imgs} image refs + {docs} file refs, {relinked} re-linked. Status: {a.status}.')
+print('Next: review under Posts > All Posts and Pages > All Pages, then publish. Revoke the application password in your profile.')

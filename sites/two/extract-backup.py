@@ -87,6 +87,43 @@ for fn in names:
     if not d: report.append(f'nid {nid}: no date')
 
 posts.sort(key=lambda p: (p['date'] or '', p['nid']))
+
+# --- what becomes a PAGE and what becomes a POST, and the generated tags -----------------------------------------------
+# The old CMS stored everything as an "article". About / contact / commanders / laws are not news: they become WordPress PAGES (no date, no tags).
+STATIC_CIDS = {166, 172, 189, 210}                  # เกี่ยวกับเรา, ติดต่อเรา, ผู้บังคับบัญชา, กฏหมาย ระเบียบ
+ITA_CIDS = {201, 229, 216, 214, 227, 198}
+TOPICS = [('พิธี', r'พิธี|พระราชกุศล|ถวายพระพร|ถวายเป็นพระ|บำเพ็ญกุศล|สตมวาร|ปัญญาสมวาร'), ('ประชุม', r'ประชุม'), ('สงกรานต์', r'สงกรานต์'),
+          ('การจับกุม', r'จับกุม|ปราบปราม|ผลักดัน'), ('จิตอาสา', r'จิตอาสา'), ('แรงงานต่างด้าว', r'แรงงานต่างด้าว|ต่างด้าว 4 สัญชาติ'),
+          ('ท่าอากาศยาน', r'ท่าอากาศยาน|สุวรรณภูมิ|ทอท\.'), ('TDAC', r'TDAC'), ('นโยบาย', r'นโยบาย|Anti|สินบน|NO GIFT|ของขวัญ'), ('สถิติ', r'สถิติ'),
+          ('ร้องเรียน', r'ร้องเรียน'), ('จริยธรรม', r'จริยธรรม'), ('มอบ/ประดับยศ', r'ประดับเครื่องหมายยศ|มอบ'),
+          ('ประกาศ', r'^\s*ประกาศ|ย้ายที่ทำการ'), ('ฝึกอบรม', r'ฝึกอบรม|อบรม'), ('ลงพื้นที่', r'ลงพื้นที่|ตรวจเยี่ยม'), ('ระบบดิจิทัล', r'แอปพลิเคชัน|โปรแกรม|Police Care')]
+
+
+def make_tags(p):
+    t, tags = p['title'], []
+    be = int(p['date'][:4]) + 543 if p['date'] else None
+    if be: tags.append(f'ปี {be}')
+    if p['cid'] in ITA_CIDS or 'ITA' in t:
+        m = re.search(r'(?:ประจำปี|ITA)\s*(?:งบประมาณ\s*)?(25\d\d)', t)
+        tags.append(f'ITA {m.group(1) if m else be}')
+        c = re.match(r'\s*([Oo]\d{1,2})\b', t) or re.match(r'\s*(0\d\d)\b', t)
+        if c: tags.append(f'ITA {c.group(1).upper()}')
+    for name, rx in TOPICS:
+        if re.search(rx, t): tags.append(name)
+    if p['files']: tags.append('มีเอกสารแนบ')
+    return list(dict.fromkeys(tags))
+
+
+for p in posts:
+    p['kind'] = 'page' if p['cid'] in STATIC_CIDS else 'post'
+    p['tags'] = [] if p['kind'] == 'page' else make_tags(p)
+tagcount = {}
+for p in posts:
+    for t in p['tags']: tagcount.setdefault(t, []).append(p['nid'])
+open(f'{out}/TAGS.txt', 'w', encoding='utf-8').write(
+    f'{sum(1 for p in posts if p["kind"] == "page")} static articles become PAGES: ' + ', '.join(f'nid{p["nid"]} {p["title"][:30]}' for p in posts if p['kind'] == 'page') +
+    f'\n{len(tagcount)} generated tags (name: posts)\n' + '\n'.join(f'{t}: {len(v)}' for t, v in sorted(tagcount.items(), key=lambda kv: -len(kv[1]))) +
+    '\n\nposts without any topic/ITA tag: ' + ', '.join(f'nid{p["nid"]}' for p in posts if p['kind'] == 'post' and len(p['tags']) <= 1))
 json.dump(posts, open(f'{out}/posts.json', 'w', encoding='utf-8'), ensure_ascii=False, indent=1)
 empty = [p for p in posts if p['text_chars'] == 0 and not p['images'] and not p['files']]
 lines = [f'articles parsed: {len(posts)} of {len(names)} news_view pages', f'media files written: {len(seen_media)}',

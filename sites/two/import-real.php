@@ -2,7 +2,8 @@
 /**
  * SITE TWO: imports the REAL blog from the backup (the import pack made by sites/two/extract-backup.py) into WordPress.
  *
- *   - 89 articles as posts in their real categories (slug cat-<cid>), real titles, dates, view counts, bodies
+ *   - 76 news/ITA articles as POSTS in their real categories (slug cat-<cid>) with generated tags, real titles, dates, view counts, bodies
+ *   - 13 static articles (about, contact, commanders, laws...) as PAGES (pack field kind=page), no categories or tags
  *   - article images and attached PDF/DOCX/XLSX go into the Media Library; body links/<img> are rewritten to them
  *   - the first image of a post becomes its featured image (the original hid it, the new design's news cards show it)
  *   - the invented placeholder posts (keys two-post-N / post-N) are moved to the trash, so real and fake never mix
@@ -25,7 +26,7 @@ wp_set_current_user($adminId);                       // keeps iframes/tables in 
 /* categories: real names and ids from the old CMS (the seed creates the same ones) */
 $catId = [];
 foreach ($posts as $p) {
-    if (isset($catId[$p['cid']]) || !$p['cid']) continue;
+    if ($p['kind'] !== 'post' || isset($catId[$p['cid']]) || !$p['cid']) continue;
     $t = get_term_by('slug', 'cat-' . $p['cid'], 'category') ?: get_term_by('name', $p['category'], 'category');
     if (!$t) { $r = wp_insert_term($p['category'], 'category', ['slug' => 'cat-' . $p['cid']]); $t = is_wp_error($r) ? null : get_term($r['term_id'], 'category'); }
     if ($t) $catId[$p['cid']] = (int) $t->term_id;
@@ -54,13 +55,23 @@ $attach = function (string $kind, string $name, int $parent) use ($pack): ?int {
     return (int) $id;
 };
 
-$made = 0; $skipped = 0; $imgs = 0; $docs = 0; $feat = 0; $byNid = [];
+$converted = 0; $made = 0; $skipped = 0; $imgs = 0; $docs = 0; $feat = 0; $byNid = [];
 foreach ($posts as $p) {
-    $ex = get_posts(['post_type' => 'post', 'post_status' => 'any', 'meta_key' => '_real_nid', 'meta_value' => $p['nid'], 'fields' => 'ids', 'numberposts' => 1]);
-    if ($ex) { $byNid[$p['nid']] = (int) $ex[0]; $skipped++; continue; }
+    $kind = $p['kind'];
+    $ex = get_posts(['post_type' => ['post', 'page'], 'post_status' => 'any', 'meta_key' => '_real_nid', 'meta_value' => $p['nid'], 'fields' => 'ids', 'numberposts' => 1]);
+    if ($ex) {
+        $byNid[$p['nid']] = (int) $ex[0]; $skipped++;
+        if (get_post_type($ex[0]) !== $kind) {                       // imported by an older version as a post: turn it into a page
+            wp_update_post(['ID' => $ex[0], 'post_type' => $kind, 'post_name' => ($kind === 'page' ? 'page-' : 'news-') . $p['nid']]);
+            if ($kind === 'page') { wp_set_object_terms($ex[0], [], 'category'); wp_set_object_terms($ex[0], [], 'post_tag'); }
+            $converted++;
+        }
+        continue;
+    }
     $when = ($p['date'] ?: '2024-01-01') . sprintf(' 08:%02d:00', $p['nid'] % 60);   // the CMS stored no time of day
-    $id = wp_insert_post(['post_type' => 'post', 'post_status' => 'draft', 'post_title' => $p['title'], 'post_content' => '', 'post_author' => $adminId,
-        'post_date' => $when, 'post_date_gmt' => get_gmt_from_date($when), 'post_category' => isset($catId[$p['cid']]) ? [$catId[$p['cid']]] : [], 'post_name' => 'news-' . $p['nid']], true);
+    $id = wp_insert_post(['post_type' => $kind, 'post_status' => 'draft', 'post_title' => $p['title'], 'post_content' => '', 'post_author' => $adminId,
+        'post_date' => $when, 'post_date_gmt' => get_gmt_from_date($when), 'post_name' => ($kind === 'page' ? 'page-' : 'news-') . $p['nid']]
+        + ($kind === 'post' ? ['post_category' => isset($catId[$p['cid']]) ? [$catId[$p['cid']]] : [], 'tags_input' => $p['tags']] : []), true);
     if (is_wp_error($id)) { echo "  post fail nid{$p['nid']}: " . $id->get_error_message() . "\n"; continue; }
     $body = $p['body_html']; $first = null;
     $body = preg_replace_callback('~@media/([^"\')\s]+)~', function ($m) use ($attach, $id, &$imgs, &$first) {
@@ -76,15 +87,18 @@ foreach ($posts as $p) {
 }
 
 /* second pass: links between articles / categories that the crawler had rewritten */
+$firstPage = [];
+foreach ($posts as $p) if ($p['kind'] === 'page' && isset($byNid[$p['nid']])) $firstPage += [$p['cid'] => $byNid[$p['nid']]];
 $relinked = 0;
 foreach ($byNid as $nid => $id) {
     $c = get_post_field('post_content', $id);
-    $n = preg_replace_callback('~@(post|cat)/(\d+)~', function ($m) use ($byNid, $catId) {
+    $n = preg_replace_callback('~@(post|cat)/(\d+)~', function ($m) use ($byNid, $catId, $firstPage) {
         if ($m[1] === 'post') return isset($byNid[(int) $m[2]]) ? get_permalink($byNid[(int) $m[2]]) : '#';
-        return isset($catId[(int) $m[2]]) ? get_category_link($catId[(int) $m[2]]) : '#';
+        if (isset($catId[(int) $m[2]])) return get_category_link($catId[(int) $m[2]]);
+        return isset($firstPage[(int) $m[2]]) ? get_permalink($firstPage[(int) $m[2]]) : '#';       // a category that became pages
     }, $c);
     if ($n !== $c) { wp_update_post(['ID' => $id, 'post_content' => wp_slash($n)]); $relinked++; }
 }
 if (class_exists('\Elementor\Plugin')) { \Elementor\Plugin::$instance->files_manager->clear_cache(); }
-echo "real import: $made posts created ($skipped already there), $imgs images + $docs files in the media library, $feat featured images, $relinked posts re-linked, $trashed placeholder posts trashed, status=$status\n";
+echo "real import: $made created ($skipped already there, $converted converted post->page), $imgs images + $docs files in the media library, $feat featured images, $relinked posts re-linked, $trashed placeholder posts trashed, status=$status\n";
 foreach (get_categories(['hide_empty' => true, 'orderby' => 'count', 'order' => 'DESC']) as $c) printf("  %-58s %d\n", $c->name, $c->count);

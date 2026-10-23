@@ -74,7 +74,11 @@ python -X utf8 sites/two/extract-backup.py <backup>/division2.immigration.go.th 
 docker compose run --rm -u 33 -v "${PWD}/sites:/sites:ro" -v "<pack-folder>:/pack:ro" --entrypoint wp wpcli eval-file /sites/two/import-real.php --path=/var/www/html
 ```
 
-It creates the 89 posts in their real categories (real titles, dates, view counts, bodies), uploads about 530 images and files to the Media Library and rewrites the body links, sets each post's first image as the featured image, and trashes the placeholder posts. Re-running skips what is already imported. 11 of the 100 crawled article pages are dead-link shells and are skipped; 20 of the 89 articles have no text, image or file in the backup (same as the live site). Site one has no pack: the backup holds only 4 static pages for it.
+It splits the 89 old "articles" by what they are: **76 news and ITA articles become Posts** (real categories, real titles, dates and bodies, plus generated **tags**) and the **13 static articles** (about us, vision, contact, commanders, laws, complaint channel) become **Pages**, with no date, category or tag. About 530 images and files go to the Media Library and the body links are rewritten, the first image of a post becomes its featured image, and the placeholder posts are trashed. Re-running skips what is already imported. 11 of the 100 crawled article pages are dead-link shells and are skipped; 20 of the 89 articles have no text, image or file in the backup (same as the live site).
+
+**Tags** do not exist in the old CMS, so `extract-backup.py` generates them from the title and date (review them in `pack/TAGS.txt`): year (`ปี 2569`), ITA year and indicator (`ITA 2567`, `ITA O9`), topic (พิธี, ประชุม, สงกรานต์, การจับกุม, นโยบาย, สถิติ, ...) and `มีเอกสารแนบ`. Change the rules (`TOPICS`, `STATIC_CIDS` near the end of that script) and re-run the extraction to change them.
+
+**On a live site** use `sites/two/import-live.py` instead (REST API, runs on your computer, asks for an Application Password, imports as drafts; try `--limit 3` first).
 
 Site one has **no blog posts**, like the real site: just 5 pages and a menu. Not covered yet: the real homepage carousel, documents (hundreds of PDFs), video list, units list, contact details and forms.
 
