@@ -44,7 +44,9 @@ def api(method, route, query='', body=None, headers=None, tries=4):
                 return json.loads(r.read() or b'null'), r.headers
         except urllib.error.HTTPError as e:
             msg = e.read().decode('utf-8', 'replace')[:300]
-            if e.code in (401, 403) and 'rest_' in msg or e.code == 401: sys.exit(f'\nSTOP: {e.code} {msg}\n(check the username and the application password; the account must be an Administrator)')
+            if e.code == 401: sys.exit(f'\nSTOP: {e.code} {msg}\n(check the username and the application password; the account must be an Administrator)')
+            if e.code == 403 and 'Just a moment' in msg:                    # Cloudflare bot check: wait and try again, then give up on this request
+                err = 'blocked by a Cloudflare challenge'; time.sleep(10 * (t + 1)); continue
             if e.code < 500 and e.code != 429: raise RuntimeError(f'{e.code} {msg}')
             err = f'{e.code}'
         except Exception as e:
@@ -81,6 +83,9 @@ for p in posts:
             r, _ = api('POST', '/wp/v2/tags', body={'name': t}); tags[t] = r['id']
 
 
+failed, blocked = set(), set()
+
+
 # 2. media -----------------------------------------------------------------------------------------------------------
 def upload(kind, name):
     key = f'{kind}/{name}'
@@ -89,9 +94,20 @@ def upload(kind, name):
     if not os.path.isfile(path): return None
     if a.dry_run: return {'id': 0, 'url': f'{site}/wp-content/uploads/{name}'}
     ext = os.path.splitext(name)[1].lower()
-    r, _ = api('POST', '/wp/v2/media', '_fields=id,source_url', open(path, 'rb').read(),
-               {'Content-Type': MIME.get(ext, mimetypes.guess_type(name)[0] or 'application/octet-stream'), 'Content-Disposition': f'attachment; filename="{name}"'})
-    manifest['media'][key] = {'id': r['id'], 'url': r['source_url']}; save()
+    stem = os.path.splitext(name)[0].lower()
+    try:                                                          # already in the Media Library (uploaded by hand, or by an earlier run)?
+        have, _ = api('GET', '/wp/v2/media', 'slug=' + urllib.parse.quote(re.sub(r'[^a-z0-9_-]+', '-', stem)) + '&_fields=id,source_url')
+        have = [h for h in have if os.path.basename(h['source_url']).lower().startswith(stem[:20])]
+        if have: manifest['media'][key] = {'id': have[0]['id'], 'url': have[0]['source_url']}; save(); return manifest['media'][key]
+    except RuntimeError: pass
+    if ext in blocked: failed.add(key); return None                # this file type was refused earlier in this run: do not hammer the server
+    try:
+        r, _ = api('POST', '/wp/v2/media', '_fields=id,source_url', open(path, 'rb').read(),
+                   {'Content-Type': MIME.get(ext, mimetypes.guess_type(name)[0] or 'application/octet-stream'), 'Content-Disposition': f'attachment; filename="{name}"'})
+    except RuntimeError as e:
+        print(f'    ! could not upload {key}: {str(e)[:110]}'); failed.add(key); blocked.add(ext)
+        print(f'    ! skipping further {ext} uploads in this run; the posts get a placeholder link, fixed on the next run'); return None
+    manifest['media'][key] = {'id': r['id'], 'url': r['source_url']}; save(); time.sleep(0.5)       # be gentle with the server
     return manifest['media'][key]
 
 
@@ -107,12 +123,12 @@ for i, p in enumerate(posts, 1):
     def media(m):
         global imgs
         u = upload('media', m.group(1))
-        if not u: return m.group(0)
+        if not u: return '#pending-media/' + m.group(1)
         imgs += 1; return u['url']
     def files(m):
         global docs
         u = upload('file', m.group(1))
-        if not u: return m.group(0)
+        if not u: return '#pending-file/' + m.group(1)
         docs += 1; return u['url']
     body = re.sub(r'@media/([^"\')\s]+)', media, p['body_html']); body = re.sub(r'@file/([^"\')\s]+)', files, body)
     feat = upload('media', p['images'][0]) if p['images'] else None
@@ -123,8 +139,26 @@ for i, p in enumerate(posts, 1):
         data['categories'] = [cats[f'cat-{p["cid"]}']] if p['cid'] and cats.get(f'cat-{p["cid"]}') else []
         data['tags'] = [tags[t] for t in p['tags'] if tags.get(t)]
     r, _ = api('POST', route(kind), body=data)
-    manifest['posts'][str(p['nid'])] = r['id']; manifest['kinds'][str(p['nid'])] = kind; save(); made += 1
+    manifest['posts'][str(p['nid'])] = r['id']; manifest['kinds'][str(p['nid'])] = kind; made += 1
+    if '#pending-' in body: manifest.setdefault('pending', {})[str(p['nid'])] = {'id': r['id'], 'kind': kind}
+    save()
     print(f'  [{i}/{len(posts)}] {kind:4} {slug}  {p["title"][:45]}  ({len(p["images"])} img, {len(p["files"])} files, {len(p["tags"])} tags)')
+
+# 3b. files that could not be uploaded earlier: try again, patch the posts that are waiting for them ------------------------
+waiting = set()
+if not a.dry_run:
+    for nid, w in list(manifest.get('pending', {}).items()):
+        cur, _ = api('GET', f'{route(w["kind"])}/{w["id"]}', 'context=edit&_fields=content')
+        raw = cur['content']['raw']
+        def again(m):
+            u = upload('media' if m.group(1) == 'media' else 'file', m.group(2))
+            return u['url'] if u else m.group(0)
+        new = re.sub(r'#pending-(media|file)/([^"\')\s]+)', again, raw)
+        if new != raw: api('POST', f'{route(w["kind"])}/{w["id"]}', body={'content': new})
+        left = re.findall(r'#pending-(?:media|file)/([^"\')\s]+)', new)
+        waiting.update(left)
+        if not left: del manifest['pending'][nid]
+        save()
 
 # 4. links between articles ---------------------------------------------------------------------------------------------
 firstpage = {}                                    # a category that became pages: link to its first page instead
@@ -146,4 +180,8 @@ if not a.dry_run:
         if new != raw: api('POST', f'{route(p["kind"])}/{pid}', body={'content': new}); relinked += 1
 
 print(f'\nDONE: {made} created ({skipped} already there), {imgs} image refs + {docs} file refs, {relinked} re-linked. Status: {a.status}.')
+if waiting:
+    print(f'\n{len(waiting)} file(s) could NOT be uploaded (the server or Cloudflare refused them). Their articles exist, with a placeholder link in place of the file.')
+    print('  Fix: upload those files by hand (Media > Add New, drag them in from <pack>\\files), then run this same command again: it finds them and fixes the links.')
+    print('  Files: ' + ', '.join(sorted(waiting)[:12]) + (' ...' if len(waiting) > 12 else ''))
 print('Next: review under Posts > All Posts and Pages > All Pages, then publish. Revoke the application password in your profile.')
