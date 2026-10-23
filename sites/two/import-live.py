@@ -21,6 +21,7 @@ import argparse, base64, getpass, json, mimetypes, os, re, sys, time, urllib.err
 ap = argparse.ArgumentParser()
 ap.add_argument('--site', required=True); ap.add_argument('--user', required=True); ap.add_argument('--pack', required=True)
 ap.add_argument('--status', default='draft', choices=['draft', 'publish', 'pending', 'private']); ap.add_argument('--dry-run', action='store_true'); ap.add_argument('--limit', type=int, default=0)
+ap.add_argument('--menu', choices=['two', 'admin'], default='two', help='which Main menu to build with --structure: two = division2 (default), admin = admin-division2')
 ap.add_argument('--structure', action='store_true', help='also upload <pack>/site-assets (logo, portrait) and build the "Main menu" the header uses; writes <pack>/live-ids-<site>.json')
 a = ap.parse_args()
 site = a.site.rstrip('/')
@@ -189,6 +190,9 @@ if a.structure and not a.dry_run:
     print(f'  site assets: {", ".join(ids["assets"]) or "none"}')
     PG = lambda n, t: (t, 'post_type', 'page', manifest['posts'].get(str(n)))
     CT = lambda c, t: (t, 'taxonomy', 'category', cats.get(f'cat-{c}'))
+    MENU_ADMIN = [(('หน้าแรก', 'custom', site + '/', None), []),
+                  (('เกี่ยวกับเรา', 'custom', '#', None), [PG(127, 'ผู้บังคับบัญชา'), PG(126, 'โครงสร้าง/หน่วยงาน')]),
+                  (('มาตรฐาน ITA', 'custom', '#', None), [CT(198, 'มาตรฐาน ITA'), CT(199, 'ตัวชี้วัดที่ 9 การเปิดเผยข้อมูล'), CT(214, 'ผลการปฏิบัติ ITA')])]
     MENU = [(('หน้าแรก', 'custom', site + '/', None), []),
             (('เกี่ยวกับเรา', 'custom', '#', None), [PG(296, 'วิสัยทัศน์/พันธกิจ'), PG(298, 'ทำเนียบผู้บังคับบัญชา'), PG(299, 'โครงสร้างองค์กร'), PG(300, 'อำนาจหน้าที่ / พื้นที่รับผิดชอบ'), PG(301, 'อัตรากำลัง')]),
             (PG(295, 'กฎหมาย/ระเบียบ'), []),
@@ -208,9 +212,10 @@ if a.structure and not a.dry_run:
             elif oid: body.update({'type': typ, 'object': obj, 'object_id': oid})
             else: return None
             r, _ = api('POST', '/wp/v2/menu-items', body=body); return r['id']
-        for top, kids in MENU:
-            if len(top) == 4 and top[1] == 'custom': pid = item(top, 0)
-            else: pid = item(top, 0)
+        for top, kids in (MENU_ADMIN if a.menu == 'admin' else MENU):
+            kids = [k for k in kids if k[1] == 'custom' or k[3]]               # only entries that exist on this site
+            if top[1] == 'custom' and top[2] == '#' and not kids: continue    # a folder with nothing inside is left out
+            pid = item(top, 0)
             for k in kids:
                 if pid: item(k, pid)
         print(f'  menu "Main menu" created with {order} items (shown by the header of the /site-two page)')

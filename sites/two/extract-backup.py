@@ -90,8 +90,8 @@ posts.sort(key=lambda p: (p['date'] or '', p['nid']))
 
 # --- what becomes a PAGE and what becomes a POST, and the generated tags -----------------------------------------------
 # The old CMS stored everything as an "article". About / contact / commanders / laws are not news: they become WordPress PAGES (no date, no tags).
-STATIC_CIDS = {166, 172, 189, 210}                  # เกี่ยวกับเรา, ติดต่อเรา, ผู้บังคับบัญชา, กฏหมาย ระเบียบ
-ITA_CIDS = {201, 229, 216, 214, 227, 198}
+STATIC_CIDS = {166, 172, 188, 189, 210}             # เกี่ยวกับเรา, ติดต่อเรา, โครงสร้าง/หน่วยงาน (admin site), ผู้บังคับบัญชา, กฏหมาย ระเบียบ
+ITA_CIDS = {201, 229, 216, 214, 227, 198, 199, 226}   # 199/226 are the admin site's ITA indicator categories
 TOPICS = [('พิธี', r'พิธี|พระราชกุศล|ถวายพระพร|ถวายเป็นพระ|บำเพ็ญกุศล|สตมวาร|ปัญญาสมวาร'), ('ประชุม', r'ประชุม'), ('สงกรานต์', r'สงกรานต์'),
           ('การจับกุม', r'จับกุม|ปราบปราม|ผลักดัน'), ('จิตอาสา', r'จิตอาสา'), ('แรงงานต่างด้าว', r'แรงงานต่างด้าว|ต่างด้าว 4 สัญชาติ'),
           ('ท่าอากาศยาน', r'ท่าอากาศยาน|สุวรรณภูมิ|ทอท\.'), ('TDAC', r'TDAC'), ('นโยบาย', r'นโยบาย|Anti|สินบน|NO GIFT|ของขวัญ'), ('สถิติ', r'สถิติ'),
