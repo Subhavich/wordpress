@@ -228,7 +228,7 @@ $cHeader = function (array $o = []) use ($section, $el, $M, $C, $T, $dim, $px, $
         $section('Masthead', 'primary', [
             $el('Masthead > row', $M(['content_width' => 'full', 'flex_direction' => 'row', 'flex_wrap' => 'nowrap', 'flex_align_items' => 'center', 'flex_justify_content' => 'space-between'], $gapR(24, 16, 12)), [
                 $row('Masthead > brand', 14, [
-                    $wd('Masthead > logo', 'site-logo', $M(['custom_image' => ['url' => $o['logoUrl'], 'id' => $o['logoId']], 'site_logo_size_size' => 'medium', 'align' => 'left', 'link_to' => 'default'], $rp('width', $px(54), $px(48), $px(40)))),
+                    $wd('Masthead > logo', 'site-logo', $M(['site_logo_fallback' => 'yes', 'custom_image' => ['url' => $o['logoUrl'], 'id' => $o['logoId']], 'site_logo_size_size' => 'medium', 'align' => 'left', 'link_to' => 'default'], $rp('width', $px(54), $px(48), $px(40)))),
                     $stack('Masthead > brand text', 0, [$heading('Masthead > name (Thai)', $o['nameTh'], 'div', 'white', 'brand'), $heading('Masthead > name (English)', $o['nameEn'], 'div', 'goldbright', 'brandsub')]),
                 ], ['flex_wrap' => 'nowrap']),
                 $wd('Masthead > main menu (Essential Addons Simple Menu)', 'eael-simple-menu', $M(
@@ -263,7 +263,7 @@ $cFooter = function (array $o = []) use ($section, $el, $M, $C, $dim, $px, $rp, 
         $section('Footer', 'navy900', [
             $grid('Footer > columns grid', [4, 2, 1], [1, 2, 4], [28, 24, 22], [
                 $stack('Footer > column: brand', 8, [
-                    $wd('Footer > logo', 'site-logo', $M(['custom_image' => ['url' => $o['logoUrl'], 'id' => $o['logoId']], 'align' => 'left', 'link_to' => 'default'], $rp('width', $px(60), $px(56), $px(52)))),
+                    $wd('Footer > logo', 'site-logo', $M(['site_logo_fallback' => 'yes', 'custom_image' => ['url' => $o['logoUrl'], 'id' => $o['logoId']], 'align' => 'left', 'link_to' => 'default'], $rp('width', $px(60), $px(56), $px(52)))),
                     $heading('Footer > name (Thai)', $o['nameTh'], 'h3', 'white', 'h3card'), $heading('Footer > name (English)', $o['nameEn'], 'div', 'goldbright', 'brandsub'),
                     $text('Footer > address', '<p>' . $o['address'] . '</p>', 'softtext', 'body')]),
                 $flist('traveller services', $o['col1Title'], $o['col1']),
