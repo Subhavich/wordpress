@@ -47,18 +47,21 @@ $sEmpty = fn($name, $title, $bg, $msg, $cta, $icoName) => $section($name, $bg, [
     ], true),
 ], '', [20, 18, 16], [44, 36, 30]);
 
-// Downloads: two cards, each a list of document links plus a "view all" link.
-$docCol = fn($title, array $docs) => $el("Downloads > column: $title", $M(['content_width' => 'full', 'flex_direction' => 'column'], $card('white', 'rule'), $gapR(14, 14, 12), $padR($dim(24, 26), $dim(22, 22), $dim(20, 18))), [
+// Downloads: two cards of document links, from sites/one/docs.json (real documents). Each link is a placeholder "#doc/<key>" that
+// sites/export-live.php replaces with the live file URL; "view all" is "#downloads" (the live Downloads page).
+$docsCfg = json_decode((string) @file_get_contents(is_file(__DIR__ . '/docs.json') ? __DIR__ . '/docs.json' : '/sites/one/docs.json'), true) ?: ['announce' => ['title' => 'ประกาศและเอกสารเผยแพร่', 'show' => 6, 'items' => []], 'important' => ['title' => 'เอกสารสำคัญ', 'items' => []]];
+$docIcon = ['pdf' => 'far fa-file-pdf', 'image' => 'far fa-image', 'article' => 'far fa-newspaper'];
+$docCol = fn($title, array $items) => $el("Downloads > column: $title", $M(['content_width' => 'full', 'flex_direction' => 'column'], $card('white', 'rule'), $gapR(14, 14, 12), $padR($dim(24, 26), $dim(22, 22), $dim(20, 18))), [
     $heading("Downloads > $title > title", $title, 'h3', 'primary', 'h3card'),
     $divider("Downloads > $title > rule", 'rule'),
-    $iconList("Downloads > $title > document links", array_map(fn($d) => [$d, 'far fa-file-pdf', '#'], $docs), 'text', 'secondary', 'secondary', 'body'),
-    $linkButton("Downloads > $title > view all", 'ดูทั้งหมด ›', '#', 'secondary', 'primary'),
+    $iconList("Downloads > $title > document links", array_map(fn($d) => [$d['title'], $docIcon[$d['kind'] ?? 'pdf'] ?? 'far fa-file-pdf', '#doc/' . $d['key']], $items), 'text', 'secondary', 'secondary', 'body'),
+    $linkButton("Downloads > $title > view all", 'ดูทั้งหมด ›', '#downloads', 'secondary', 'primary'),
 ], true);
 $sDocs = $section('Downloads', 'white', [
     $secHead('Downloads', 'เอกสารดาวน์โหลด', false),
     $grid('Downloads > columns grid', [2, 1, 1], [1, 2, 2], [24, 20, 16], [
-        $docCol('บริการออนไลน์และข้อมูลความรู้', ['คู่มือการใช้ระบบแจ้งที่พักอาศัย ตม. 30', 'คู่มือการแจ้งอยู่เกิน 90 วัน (ตม. 47)', 'ขั้นตอนการขออยู่ต่อในราชอาณาจักรออนไลน์', 'คำถามที่พบบ่อยสำหรับคนต่างด้าว']),
-        $docCol('เอกสารสำคัญ', ['พระราชบัญญัติคนเข้าเมือง พ.ศ. 2522', 'ประกาศเจตนารมณ์นโยบายงดรับของขวัญ', 'แผนปฏิบัติราชการประจำปีงบประมาณ 2569', 'รายงานผลการดำเนินงานประจำปี']),
+        $docCol($docsCfg['announce']['title'], array_slice($docsCfg['announce']['items'], 0, (int) $docsCfg['announce']['show'])),
+        $docCol($docsCfg['important']['title'], $docsCfg['important']['items']),
     ]),
 ], 'docs', [24, 20, 18], [56, 44, 34]);
 

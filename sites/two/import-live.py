@@ -21,6 +21,7 @@ import argparse, base64, getpass, json, mimetypes, os, re, sys, time, urllib.err
 ap = argparse.ArgumentParser()
 ap.add_argument('--site', required=True); ap.add_argument('--user', required=True); ap.add_argument('--pack', required=True)
 ap.add_argument('--status', default='draft', choices=['draft', 'publish', 'pending', 'private']); ap.add_argument('--dry-run', action='store_true'); ap.add_argument('--limit', type=int, default=0)
+ap.add_argument('--docs', metavar='DOCS_JSON', help='also upload the files listed in this docs.json from <pack>/docs, create the "เอกสารดาวน์โหลด" page (slug downloads) and record the live links (sites/one/docs.json)')
 ap.add_argument('--menu', choices=['two', 'admin'], default='two', help='which Main menu to build with --structure: two = division2 (default), admin = admin-division2')
 ap.add_argument('--structure', action='store_true', help='also upload <pack>/site-assets (logo, portrait) and build the "Main menu" the header uses; writes <pack>/live-ids-<site>.json')
 a = ap.parse_args()
@@ -92,7 +93,7 @@ failed, blocked = set(), set()
 def upload(kind, name):
     key = f'{kind}/{name}'
     if key in manifest['media']: return manifest['media'][key]
-    path = os.path.join(a.pack, {'media': 'media', 'file': 'files', 'asset': 'site-assets'}[kind], name)
+    path = os.path.join(a.pack, {'media': 'media', 'file': 'files', 'asset': 'site-assets', 'doc': 'docs'}[kind], name)
     if not os.path.isfile(path): return None
     if a.dry_run: return {'id': 0, 'url': f'{site}/wp-content/uploads/{name}'}
     ext = os.path.splitext(name)[1].lower()
@@ -220,6 +221,33 @@ if a.structure and not a.dry_run:
                 if pid: item(k, pid)
         print(f'  menu "Main menu" created with {order} items (shown by the header of the /site-two page)')
     json.dump(ids, open(os.path.join(a.pack, 'live-ids-' + re.sub(r'\W+', '_', urllib.parse.urlparse(site).netloc + urllib.parse.urlparse(site).path.rstrip('/')) + '.json'), 'w', encoding='utf-8'), indent=1)
+
+# 6. documents for the Downloads section + a "Downloads" page that lists them all ------------------------------------------
+if a.docs and not a.dry_run:
+    cfg = json.load(open(a.docs, encoding='utf-8'))
+    idsf = os.path.join(a.pack, 'live-ids-' + re.sub(r'\W+', '_', urllib.parse.urlparse(site).netloc + urllib.parse.urlparse(site).path.rstrip('/')) + '.json')
+    ids = json.load(open(idsf, encoding='utf-8')) if os.path.exists(idsf) else {'site': site, 'cats': {}, 'pages': {}, 'assets': {}}
+    ids['docs'] = {}; ids['posts'] = dict(manifest['posts']); groups = []
+    for gk in ('announce', 'important'):
+        g = cfg[gk]; listed = []
+        for it in g['items']:
+            url = None
+            if it.get('file'):
+                u = upload('doc', it['file']); url = u['url'] if u else None
+            elif it.get('media_slug'):
+                rows, _ = api('GET', '/wp/v2/media', 'slug=' + urllib.parse.quote(it['media_slug']) + '&_fields=id,source_url'); url = rows[0]['source_url'] if rows else None
+            elif it.get('post_nid'):
+                pid = manifest['posts'].get(str(it['post_nid'])); url = f'{site}/?p={pid}' if pid else None
+            if url: ids['docs'][it['key']] = {'url': url, 'title': it['title']}; listed.append((it['title'], url, it.get('date')))
+            else: print(f'  ! no link for "{it["key"]}" ({it["title"][:40]}): file not uploaded, or not found on this site')
+        groups.append((g['title'], listed))
+    page_html = ''.join(f'<h2>{t}</h2>\n<ul>\n' + ''.join(f'<li><a href="{u}">{ti}</a>' + (f' <small>({d})</small>' if d else '') + '</li>\n' for ti, u, d in items) + '</ul>\n' for t, items in groups)
+    ex, _ = api('GET', '/wp/v2/pages', 'slug=downloads&status=any&_fields=id')
+    if ex: ids['downloads_page'] = ex[0]['id']; print('  Downloads page already exists: left as it is')
+    else:
+        r, _ = api('POST', '/wp/v2/pages', body={'title': 'เอกสารดาวน์โหลด', 'slug': 'downloads', 'status': a.status, 'content': page_html}); ids['downloads_page'] = r['id']; print(f'  Downloads page created (id {r["id"]}, {a.status})')
+    json.dump(ids, open(idsf, 'w', encoding='utf-8'), indent=1, ensure_ascii=False); save()
+    print(f'  documents with a live link: {len(ids["docs"])}')
 
 print(f'\nDONE: {made} created ({skipped} already there), {imgs} image refs + {docs} file refs, {relinked} re-linked. Status: {a.status}.')
 if waiting:

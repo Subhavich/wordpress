@@ -34,7 +34,7 @@ $data = json_decode(get_post_meta($pageId, '_elementor_data', true), true);
 $logo = $live['assets']['logo-imm2.png'] ?? null; $portrait = $live['assets']['portrait-placeholder.png'] ?? null;
 if (!$logo || !$portrait) { echo "live-ids has no logo/portrait: both must be in <pack>/site-assets, then run import-live.py with --structure.\n"; return; }
 $newsCat = $cfg['news'] ? get_term_by('slug', 'cat-' . $cfg['news'], 'category') : null;
-$n = ['image' => 0, 'link' => 0, 'category' => 0, 'menu' => 0, 'other' => 0];
+$n = ['image' => 0, 'link' => 0, 'category' => 0, 'menu' => 0, 'doc' => 0, 'other' => 0];
 $map = function ($x) use (&$map, $site, $local, $live, $logo, $portrait, $cfg, $newsCat, &$n) {
     if (!is_array($x)) return $x;
     if (isset($x['url']) && is_string($x['url']) && array_key_exists('id', $x)) {                    // an Elementor media value {url, id}
@@ -43,6 +43,8 @@ $map = function ($x) use (&$map, $site, $local, $live, $logo, $portrait, $cfg, $
         elseif (preg_match('~^(mock-portrait|portrait-placeholder)(-\d+)?\.png$~', $file)) { $x['url'] = $portrait['url']; $x['id'] = $portrait['id']; $n['image']++; }
     }
     foreach ($x as $k => $v) {
+        if (is_string($v) && preg_match('~^#doc/([\w-]+)$~', $v, $dm)) { $x[$k] = $live['docs'][$dm[1]]['url'] ?? '#'; $n['doc']++; continue; }          // Downloads section: file links
+        if ($v === '#downloads') { $x[$k] = isset($live['downloads_page']) ? $site . '/?page_id=' . $live['downloads_page'] : '#'; $n['doc']++; continue; }
         if (is_string($v) && strpos($v, $local) !== false) {
             $path = '/' . trim((string) parse_url($v, PHP_URL_PATH), '/'); $done = false;
             foreach ($cfg['links'] as $p => [$kind, $nid]) if (rtrim($path, '/') === $p) { $x[$k] = $site . '/?page_id=' . ($live['pages'][$nid] ?? 0); $n['link']++; $done = true; }
@@ -79,4 +81,4 @@ $zo = new ZipArchive(); $zo->open($kit, ZipArchive::CREATE);
 $zo->addFromString('manifest.json', json_encode($manifest, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
 $zo->addFromString("content/page/$pageId.json", json_encode(['content' => $data, 'settings' => $settings, 'metadata' => []], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
 $zo->close(); @unlink($tmp);
-echo "page: {$cfg['file']}.page.kit.zip (" . filesize($kit) . " bytes) + {$cfg['file']}.template.json | images {$n['image']}, key links {$n['link']}, news category {$n['category']}, menu {$n['menu']}, other urls {$n['other']}, leftover 'localhost': $left\n";
+echo "page: {$cfg['file']}.page.kit.zip (" . filesize($kit) . " bytes) + {$cfg['file']}.template.json | images {$n['image']}, key links {$n['link']}, news category {$n['category']}, menu {$n['menu']}, document links {$n['doc']}, other urls {$n['other']}, leftover 'localhost': $left\n";
