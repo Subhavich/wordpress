@@ -80,6 +80,12 @@ It splits the 89 old "articles" by what they are: **76 news and ITA articles bec
 
 **On a live site** use `sites/two/import-live.py` instead (REST API, runs on your computer, asks for an Application Password, imports as drafts; try `--limit 3` first).
 
+### Putting the native Elementor design on a live site (no custom code on the site)
+
+1. `import-live.py ... --structure` also uploads the logo and a portrait placeholder from `<pack>/site-assets/` and creates the Thai **Main menu** (pages + categories) that the header widget shows. It writes `<pack>/live-ids-<site>.json`.
+2. `sites/two/export-live.php` (run on your local WordPress with the pack mounted) turns the local `/site-two` page into two files for the live site, in `<pack>/kit/`: `design-system.kit.zip` (Global Colors, Global Fonts, 1280 px width: nothing else) and `site-two.live.json` (the page as an Elementor template, with images, links and the News category re-pointed at the live site).
+3. On the live site: **Elementor > Tools > Import/Export Kit** > import the kit (design system) first, then **Templates > Saved Templates > Import** the JSON, then insert the template into a new page (Layout: Elementor Canvas, slug `site-two`).
+
 Site one has **no blog posts**, like the real site: just 5 pages and a menu. Not covered yet: the real homepage carousel, documents (hundreds of PDFs), video list, units list, contact details and forms.
 
 ## Workflow for two developers

@@ -21,6 +21,7 @@ import argparse, base64, getpass, json, mimetypes, os, re, sys, time, urllib.err
 ap = argparse.ArgumentParser()
 ap.add_argument('--site', required=True); ap.add_argument('--user', required=True); ap.add_argument('--pack', required=True)
 ap.add_argument('--status', default='draft', choices=['draft', 'publish', 'pending', 'private']); ap.add_argument('--dry-run', action='store_true'); ap.add_argument('--limit', type=int, default=0)
+ap.add_argument('--structure', action='store_true', help='also upload <pack>/site-assets (logo, portrait) and build the "Main menu" the header uses; writes <pack>/live-ids-<site>.json')
 a = ap.parse_args()
 site = a.site.rstrip('/')
 pw = os.environ.get('WP_APP_PASSWORD') or getpass.getpass(f'Application password for {a.user} on {site}: ')
@@ -90,7 +91,7 @@ failed, blocked = set(), set()
 def upload(kind, name):
     key = f'{kind}/{name}'
     if key in manifest['media']: return manifest['media'][key]
-    path = os.path.join(a.pack, 'media' if kind == 'media' else 'files', name)
+    path = os.path.join(a.pack, {'media': 'media', 'file': 'files', 'asset': 'site-assets'}[kind], name)
     if not os.path.isfile(path): return None
     if a.dry_run: return {'id': 0, 'url': f'{site}/wp-content/uploads/{name}'}
     ext = os.path.splitext(name)[1].lower()
@@ -178,6 +179,42 @@ if not a.dry_run:
             return f'{site}/?cat={c}' if c else (f'{site}/?p={f}' if f else '#')
         new = re.sub(r'@(post|cat)/(\d+)', link, raw)
         if new != raw: api('POST', f'{route(p["kind"])}/{pid}', body={'content': new}); relinked += 1
+
+# 5. site structure: logo + portrait in the Media Library, the "Main menu" the header widget shows -----------------------------
+if a.structure and not a.dry_run:
+    ids = {'site': site, 'cats': {c[4:]: i for c, i in cats.items() if c.startswith('cat-')}, 'pages': {n: i for n, i in manifest['posts'].items() if manifest['kinds'].get(n) == 'page'}, 'assets': {}}
+    for f in sorted(os.listdir(os.path.join(a.pack, 'site-assets'))):
+        u = upload('asset', f)
+        if u: ids['assets'][f] = u
+    print(f'  site assets: {", ".join(ids["assets"]) or "none"}')
+    PG = lambda n, t: (t, 'post_type', 'page', manifest['posts'].get(str(n)))
+    CT = lambda c, t: (t, 'taxonomy', 'category', cats.get(f'cat-{c}'))
+    MENU = [(('หน้าแรก', 'custom', site + '/', None), []),
+            (('เกี่ยวกับเรา', 'custom', '#', None), [PG(296, 'วิสัยทัศน์/พันธกิจ'), PG(298, 'ทำเนียบผู้บังคับบัญชา'), PG(299, 'โครงสร้างองค์กร'), PG(300, 'อำนาจหน้าที่ / พื้นที่รับผิดชอบ'), PG(301, 'อัตรากำลัง')]),
+            (PG(295, 'กฎหมาย/ระเบียบ'), []),
+            (('ข่าวประชาสัมพันธ์', 'custom', '#', None), [CT(224, 'ภารกิจผู้บังคับบัญชา'), CT(223, 'ประชุมบริหาร บก.ตม.2'), CT(212, 'ข่าวประชาสัมพันธ์ทั่วไป'), CT(202, 'ผลการปฏิบัติ')]),
+            (('มาตรฐาน ITA', 'custom', '#', None), [CT(198, 'มาตรฐาน ITA'), CT(201, 'ตัวชี้วัดที่ 9 การเปิดเผยข้อมูล'), CT(216, 'ตัวชี้วัดที่ 10 การป้องกันการทุจริต'), CT(214, 'ผลการปฏิบัติ ITA'), CT(229, 'คุณธรรม ความโปร่งใส และการป้องกันการทุจริต')]),
+            (PG(111, 'ติดต่อเรา'), [PG(302, 'แจ้งร้องเรียนการทุจริต'), PG(303, 'ช่องทางการติดต่อ')])]
+    mm, _ = api('GET', '/wp/v2/menus', 'slug=main-menu&_fields=id')
+    if mm:
+        print('  menu "main-menu" already exists: left as it is'); ids['menu'] = mm[0]['id']
+    else:
+        m, _ = api('POST', '/wp/v2/menus', body={'name': 'Main menu', 'slug': 'main-menu'}); ids['menu'] = m['id']; order = 0
+        def item(spec, parent):
+            global order
+            title, typ, obj, oid = spec; order += 1
+            body = {'title': title, 'status': 'publish', 'menus': m['id'], 'parent': parent, 'menu_order': order}
+            if typ == 'custom': body.update({'type': 'custom', 'url': obj})
+            elif oid: body.update({'type': typ, 'object': obj, 'object_id': oid})
+            else: return None
+            r, _ = api('POST', '/wp/v2/menu-items', body=body); return r['id']
+        for top, kids in MENU:
+            if len(top) == 4 and top[1] == 'custom': pid = item(top, 0)
+            else: pid = item(top, 0)
+            for k in kids:
+                if pid: item(k, pid)
+        print(f'  menu "Main menu" created with {order} items (shown by the header of the /site-two page)')
+    json.dump(ids, open(os.path.join(a.pack, 'live-ids-' + re.sub(r'\W+', '_', urllib.parse.urlparse(site).netloc + urllib.parse.urlparse(site).path.rstrip('/')) + '.json'), 'w', encoding='utf-8'), indent=1)
 
 print(f'\nDONE: {made} created ({skipped} already there), {imgs} image refs + {docs} file refs, {relinked} re-linked. Status: {a.status}.')
 if waiting:
