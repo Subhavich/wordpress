@@ -3,6 +3,10 @@
 Bump `foundry/VERSION` and add a line here for every change to `lib.php` or `build-foundry.php`.
 Sites should note which foundry version they were last tested against.
 
+## 1.2.0
+- `$cServices`: a shortcut may carry a 4th value (a URL). Its icon and its label (now an h3 Heading) then link to it, as in the 7 service shortcuts taken from the arr-immigration site. New optional 5th argument `$shortcutCols` = `[desktop, tablet, mobile]` columns of the shortcuts grid (default `[6, 3, 2]`). Without a URL and without the 5th argument the output is unchanged.
+- Site two (`sites/two/build.php`) now uses the 7 real service shortcuts (Police Care, police complaint system, Royal Thai Police, TDAC, Government application, e-Ticket, Immigration Bureau) instead of the 6 placeholder ones. This is what is live on division2.immigration.go.th.
+
 ## 1.1.1
 - Fix: the header and footer logo (UAE Site Logo widget) now set `site_logo_fallback = yes`, so the widget uses its own image. Before, it only worked where WordPress itself had a Custom Logo (theme mod) set, and showed Elementor's grey default logo on a site without one.
 

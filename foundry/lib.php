@@ -14,7 +14,7 @@
  *   $cHeader(array $o)                         -> [utility bar, masthead]   (use as the UAE "header" template)
  *   $cFooter(array $o)                         -> [footer]                  (use as the UAE "footer" template)
  *   $cStatusBand(array $items)                 -> section   items: [[name, icon, label, value], ...] (3 recommended)
- *   $cServices($title, $intro, $shortcuts, $passes) -> section  shortcuts: [[en, icon, label]] (may be []), passes: [[en, code, name, cta]]
+ *   $cServices($title, $intro, $shortcuts, $passes, $shortcutCols) -> section  shortcuts: [[en, icon, label, url?]] (may be []; with a url the icon and the label link to it), passes: [[en, code, name, cta]], shortcutCols: [desktop, tablet, mobile] columns (default [6,3,2])
  *   $cLeadership($title, $linkText, $linkUrl, $roles, $photoUrl, $photoId, $placeholderName) -> section   roles: [[en, label]]
  *   $cVideos($title, $linkText, $count, $videos) -> section   videos (optional): [[title, YouTube url], ...] -> cards link to YouTube with the video thumbnail as background
  *   $cShell($name, $bgId)                      -> section   empty section shell (outer + inner 1280 + heading row) to start a new section
@@ -161,12 +161,14 @@ $cStatusBand = function (array $items) use ($row, $icon, $stack, $text, $section
 };
 
 // Online services band: optional shortcut tiles + "pass" cards.
-$cServices = function ($title, $intro, array $shortcuts, array $passes) use ($el, $M, $C, $radius, $gapR, $padR, $dim, $icon, $text, $card, $stack, $heading, $button, $secHead, $section, $grid, $rowsFor) {
-    $laneEls = [];
-    foreach ($shortcuts as [$en, $ico, $th]) $laneEls[] = $el("Shortcut: $en", $M(['content_width' => 'full', 'flex_direction' => 'column', 'flex_align_items' => 'center', 'flex_justify_content' => 'center', 'border_border' => 'solid',
+$cServices = function ($title, $intro, array $shortcuts, array $passes, array $shortcutCols = [6, 3, 2]) use ($el, $M, $C, $radius, $gapR, $padR, $dim, $link, $icon, $text, $card, $stack, $heading, $button, $secHead, $section, $grid, $rowsFor) {
+    $laneEls = []; $linked = function ($w, $url) use ($link) { $w['settings']['link'] = $link($url); return $w; };   // a shortcut with a 4th value (url) links its icon and its label
+    foreach ($shortcuts as $sc) { [$en, $ico, $th] = $sc; $url = $sc[3] ?? '';
+        $laneEls[] = $el("Shortcut: $en", $M(['content_width' => 'full', 'flex_direction' => 'column', 'flex_align_items' => 'center', 'flex_justify_content' => 'center', 'border_border' => 'solid',
         'border_width' => ['unit' => 'px', 'top' => '1', 'right' => '1', 'bottom' => '1', 'left' => '1', 'isLinked' => true], 'border_color' => 'rgba(212,178,106,.35)', 'border_radius' => $radius(10), 'background_background' => 'classic'],
         $C('background_color', 'navy700'), $gapR(10, 10, 8), $padR($dim(18, 10), $dim(16, 10), $dim(14, 8))), [
-        $icon("Shortcut: $en > icon", $ico, 'goldbright', 30, 28, 26, 'center'), $text("Shortcut: $en > label", "<p>$th</p>", 'white', 'lanelabel', 'center')], true);
+        $url ? $linked($icon("Shortcut: $en > icon", $ico, 'goldbright', 30, 28, 26, 'center'), $url) : $icon("Shortcut: $en > icon", $ico, 'goldbright', 30, 28, 26, 'center'),
+        $url ? $linked($heading("Shortcut: $en > label", $th, 'h3', 'white', 'lanelabel', 'center'), $url) : $text("Shortcut: $en > label", "<p>$th</p>", 'white', 'lanelabel', 'center')], true); }
     $passEls = [];
     foreach ($passes as [$en, $code, $name, $cta]) $passEls[] = $el("Service card: $en", $M(['content_width' => 'full', 'flex_direction' => 'column'], $card('white', 'white'), $gapR(0, 0, 0)), [
         $stack("Service card: $en > header", 4, [$heading("Service card: $en > code", $code, 'h4', 'goldbright', 'h4label'), $heading("Service card: $en > name", $name, 'h3', 'white', 'h3card')],
@@ -175,7 +177,7 @@ $cServices = function ($title, $intro, array $shortcuts, array $passes) use ($el
             $button("Service card: $en > button", $cta, '#', 'white', 'secondary', 'secondary', 'white', 'primary')], ['padding' => $dim(18, 20)]),
     ], true);
     $kids = [$secHead('Online services', $title, true), $text('Online services > intro', "<p>$intro</p>", 'softtext', 'bodylg')];
-    if ($shortcuts) $kids[] = $grid('Online services > shortcuts grid', [6, 3, 2], $rowsFor(count($shortcuts), [6, 3, 2]), [16, 14, 12], $laneEls);
+    if ($shortcuts) $kids[] = $grid('Online services > shortcuts grid', $shortcutCols, $rowsFor(count($shortcuts), $shortcutCols), [16, 14, 12], $laneEls);
     $kids[] = $grid('Online services > service cards grid', [3, 2, 1], $rowsFor(count($passes), [3, 2, 1]), [20, 18, 16], $passEls);
     return $section('Online services', 'primary', $kids, 'eservice', [26, 24, 20], [72, 52, 40]);
 };

@@ -38,10 +38,18 @@ $home[] = $cStatusBand([
 
 // 4. Online services  (SHARED component, variant with shortcuts)
 $home[] = $cServices('บริการออนไลน์', 'Placeholder intro. Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt.',
-    [['Emergency report', 'fas fa-shield-alt', 'แจ้งเหตุด่วน'], ['Queue booking', 'far fa-calendar-alt', 'จองคิวล่วงหน้า'], ['National Police Office', 'fas fa-star-of-life', 'สำนักงานตำรวจแห่งชาติ'],
-     ['TDAC arrival card', 'far fa-file-alt', 'บัตรขาเข้าดิจิทัล TDAC'], ['Immigration app', 'fas fa-mobile-alt', 'แอปพลิเคชันตรวจคนเข้าเมือง'], ['Application status', 'fas fa-search', 'ตรวจสอบสถานะคำร้อง']],
+    [   // the 7 service shortcuts of the arr-immigration site (label + link exactly as there; icons are Font Awesome)
+    ['Police Care Click', 'fas fa-shield-alt', 'Police Care Click', 'https://arr-bkkimmigration.go.th/police-care/'],
+    ['Police complaint system', 'far fa-calendar-check', 'ระบบร้องเรียนตำรวจออนไลน์', 'https://script.google.com/macros/s/AKfycbxYxnGNSmVl_v-1JTyRKq25NCFlmGI50tJLtkW6dTdrYVMSJlel8CZ2f_drqNqwgz7vvg/exec'],
+    ['Royal Thai Police', 'fas fa-star-of-life', 'สำนักงานตำรวจแห่งชาติ', 'https://www.royalthaipolice.go.th/'],
+    ['TDAC arrival card', 'far fa-file-alt', 'บัตรขาเข้าดิจิตัล TDAC', 'https://tdac.immigration.go.th/'],
+    ['Government application', 'fas fa-mobile-alt', 'Application ทางรัฐ', 'https://arr-bkkimmigration.go.th/%e0%b8%a3%e0%b8%b0%e0%b8%9a%e0%b8%9a%e0%b8%95%e0%b8%94%e0%b8%95%e0%b8%b2%e0%b8%a1%e0%b8%84%e0%b8%a7%e0%b8%b2%e0%b8%a1%e0%b8%84%e0%b8%9a%e0%b8%ab%e0%b8%99%e0%b8%b2%e0%b8%97%e0%b8%b2%e0%b8%87%e0%b8%84/'],
+    ['e-Ticket traffic fines', 'fas fa-ticket-alt', 'e-Ticket ระบบใบสั่งจราจรออนไลน์', 'https://ptm.police.go.th/eTicket/#/'],
+    ['Immigration Bureau', 'fas fa-globe', 'สำนักงานตรวจคนเข้าเมือง', 'https://www.immigration.go.th/'],
+    ],
     [['TDAC', 'TDAC', 'บัตรขาเข้าดิจิทัล', 'ลงทะเบียน'], ['Vehicle report (TM.2)', 'ตม. 2', 'รายการเกี่ยวกับยานพาหนะ', 'แจ้งรายการ'], ['Lodger notice (TM.30)', 'ตม. 30', 'แจ้งรับคนต่างด้าวเข้าพัก', 'แจ้งเข้าพัก'],
-     ['Online appointment', 'ONLINE APPOINTMENT', 'จองคิวออนไลน์', 'จองคิว'], ['90-day report (TM.47)', 'ตม. 47', 'แจ้งอยู่เกิน 90 วัน', 'แจ้งที่พักอาศัย'], ['E-extension', 'E-EXTENSION', 'ขออยู่ต่อในราชอาณาจักร', 'ยื่นคำร้อง']]);
+     ['Online appointment', 'ONLINE APPOINTMENT', 'จองคิวออนไลน์', 'จองคิว'], ['90-day report (TM.47)', 'ตม. 47', 'แจ้งอยู่เกิน 90 วัน', 'แจ้งที่พักอาศัย'], ['E-extension', 'E-EXTENSION', 'ขออยู่ต่อในราชอาณาจักร', 'ยื่นคำร้อง']],
+    [7, 4, 2]);
 
 // 5. Leadership  (SHARED component)
 $home[] = $cLeadership('ผู้บังคับบัญชา', 'โครงสร้างหน่วยงาน', $pageUrl('org-structure'),
