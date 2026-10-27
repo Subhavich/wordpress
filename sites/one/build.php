@@ -47,6 +47,22 @@ $sEmpty = fn($name, $title, $bg, $msg, $cta, $icoName) => $section($name, $bg, [
     ], true),
 ], '', [20, 18, 16], [44, 36, 30]);
 
+// News list section: a native Essential Addons Post Grid when the category has posts, otherwise the empty-state notice above.
+$sNews = function ($name, $title, $bg, $slug, $emptyMsg, $emptyCta, $emptyIcon) use ($section, $secHead, $wd, $M, $C, $T, $radius, $sEmpty) {
+    $cat = get_term_by('slug', $slug, 'category');
+    if (!$cat || (int) $cat->count < 1) return $sEmpty($name, $title, $bg, $emptyMsg, $emptyCta, $emptyIcon);
+    return $section($name, $bg, [
+        $secHead($name, $title, false, 'ดูทั้งหมด', get_category_link($cat->term_id)),
+        $wd("$name > post grid (Essential Addons)", 'eael-post-grid', $M(
+            ['eael_post_grid_preset_style' => 'one', 'layout_mode' => 'grid', 'eael_post_grid_columns' => 'eael-col-3', 'eael_post_grid_columns_tablet' => 'eael-col-2', 'eael_post_grid_columns_mobile' => 'eael-col-1',
+             'post_type' => 'post', 'posts_per_page' => 3, 'category_ids' => [(string) $cat->term_id], 'eael_show_title' => 'yes', 'eael_show_excerpt' => 'yes', 'eael_excerpt_length' => 18,
+             'eael_show_read_more_button' => 'yes', 'read_more_button_text' => 'อ่านรายละเอียด', 'eael_show_meta' => 'yes', 'eael_show_author' => '', 'eael_show_date' => 'yes', 'image_size' => 'medium_large',
+             'enable_postgrid_image_ratio' => 'yes', 'postgrid_image_ratio' => ['unit' => 'px', 'size' => 0.62, 'sizes' => []], 'eael_post_grid_border_radius' => $radius(10)],
+            $C('eael_post_grid_bg_color', 'white'), $C('eael_post_grid_title_color', 'primary'), $C('eael_post_grid_title_hover_color', 'secondary'), $C('eael_post_grid_excerpt_color', 'muted'),
+            $C('eael_post_grid_meta_color', 'muted'), $C('read_more_btn_text_color', 'secondary'), $T('eael_post_grid_title_typography_typography', 'h3card'), $T('eael_post_grid_excerpt_typography_typography', 'small'))),
+    ], '', [20, 18, 16], [44, 36, 30]);
+};
+
 // Downloads: two cards of document links, from sites/one/docs.json (real documents). Each link is a placeholder "#doc/<key>" that
 // sites/export-live.php replaces with the live file URL; "view all" is "#downloads" (the live Downloads page).
 $docsCfg = json_decode((string) @file_get_contents(is_file(__DIR__ . '/docs.json') ? __DIR__ . '/docs.json' : '/sites/one/docs.json'), true) ?: ['announce' => ['title' => 'ประกาศและเอกสารเผยแพร่', 'show' => 6, 'items' => []], 'important' => ['title' => 'เอกสารสำคัญ', 'items' => []]];
@@ -108,8 +124,8 @@ $body[] = $cServices('บริการออนไลน์', 'Placeholder int
     [['E-extension', 'E-EXTENSION', 'ขออยู่ต่อในราชอาณาจักร', 'ยื่นคำร้อง'], ['90-day report (TM.47)', 'ตม. 47', 'แจ้งอยู่เกิน 90 วัน', 'แจ้งที่พักอาศัย'], ['Lodger notice (TM.30)', 'ตม. 30', 'แจ้งรับคนต่างด้าวเข้าพัก', 'แจ้งที่พักอาศัย']]);
 $body[] = $cLeadership('ผู้บังคับบัญชา', 'โครงสร้างหน่วยงาน', $structureUrl,                                            // SHARED
     [['National Police Chief', 'ผู้บัญชาการตำรวจแห่งชาติ'], ['Immigration Bureau Commander', 'ผู้บัญชาการสำนักงานตรวจคนเข้าเมือง'], ['Division Commander', 'ผู้บังคับการตรวจคนเข้าเมือง 2']], $portraitUrl, $portraitId);
-$body[] = $sEmpty('Press releases', 'ข่าวประชาสัมพันธ์', 'white', 'ยังไม่มีข่าวประชาสัมพันธ์เผยแพร่ในขณะนี้<br>ข่าวใหม่จะแสดงที่นี่ทันทีเมื่อเจ้าหน้าที่เผยแพร่', 'ดูข่าวย้อนหลัง', 'far fa-paper-plane');
-$body[] = $sEmpty('Arrest results', 'ผลการจับกุม', 'paper', 'ยังไม่มีรายงานผลการจับกุมเผยแพร่ในขณะนี้', 'ดูรายงานย้อนหลัง', 'fas fa-shield-alt');
+$body[] = $sNews('Press releases', 'ข่าวประชาสัมพันธ์', 'white', 'press-releases', 'ยังไม่มีข่าวประชาสัมพันธ์เผยแพร่ในขณะนี้<br>ข่าวใหม่จะแสดงที่นี่ทันทีเมื่อเจ้าหน้าที่เผยแพร่', 'ดูข่าวย้อนหลัง', 'far fa-paper-plane');
+$body[] = $sNews('Arrest results', 'ผลการจับกุม', 'paper', 'arrest-results', 'ยังไม่มีรายงานผลการจับกุมเผยแพร่ในขณะนี้', 'ดูรายงานย้อนหลัง', 'fas fa-shield-alt');
 $body[] = $cVideos('วีดิทัศน์แนะนำ', 'ช่อง Immigration Bureau', 4, [['Police Care — กฎหมายเพื่อประชาชน', 'https://www.youtube.com/watch?v=Naip6sFsP84'], ['บัตรขาเข้าดิจิทัล TDAC คืออะไร', 'https://www.youtube.com/watch?v=QSEoVloM5A0']]);   // SHARED
 $body[] = $sDocs;
 $body[] = $sContact;
@@ -122,6 +138,12 @@ $footer = $cFooter(['nameTh' => 'ฝ่ายอำนวยการ บก.ต
 $page = array_merge($header, $body, $footer);
 $slug = get_post_field('post_name', $sitePageId);
 $pageId = $save('page', 'one-page-site', 'Site one: admin-division2', $page, ['_wp_page_template' => 'elementor_canvas', '_elementor_template_type' => 'wp-page'], ['ID' => $sitePageId, 'post_name' => $slug]);
+
+// Essential Addons builds each page's CSS/JS from a per-page list of the EA widgets it uses (the Elementor editor keeps that list up to date on save).
+// A programmatic build has to write it itself, or a widget such as the Post Grid renders unstyled. Delete the generated files so they are rebuilt.
+$ea = ['simple-menu']; if (strpos(wp_json_encode($page), 'eael-post-grid') !== false) $ea[] = 'post-grid';
+update_post_meta($pageId, '_eael_widget_elements', $ea);
+foreach (glob(wp_upload_dir()['basedir'] . "/essential-addons-elementor/eael-$pageId.*") ?: [] as $f) @unlink($f);
 
 if (class_exists('\Elementor\Plugin')) { \Elementor\Plugin::$instance->files_manager->clear_cache(); }
 if ($skipped) echo "KEPT YOUR EDITS, not overwritten: " . implode('; ', $skipped) . " (set BK_FORCE=1 to rebuild from scratch)\n";

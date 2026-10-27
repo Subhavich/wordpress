@@ -76,7 +76,7 @@ def all_terms(route, key):
 cats, tags = all_terms('/wp/v2/categories', 'slug'), all_terms('/wp/v2/tags', 'name')
 for p in posts:
     if p['kind'] != 'post': continue
-    s = f'cat-{p["cid"]}'
+    s = p.get('catslug') or f'cat-{p["cid"]}'          # a pack may name the category slug itself (e.g. press-releases)
     if p['cid'] and s not in cats:
         if a.dry_run: print('  would create category', p['category']); cats[s] = 0; continue
         c, _ = api('POST', '/wp/v2/categories', body={'name': p['category'], 'slug': s}); cats[s] = c['id']; print('  category', p['category'])
@@ -139,7 +139,8 @@ for i, p in enumerate(posts, 1):
     if a.dry_run: print(f'  [{i}/{len(posts)}] would create {kind} {slug}: {p["title"][:45]}  tags={p["tags"]}'); continue
     data = {'title': p['title'], 'content': body, 'status': a.status, 'date': date, 'slug': slug, 'featured_media': feat['id'] if feat else 0}
     if kind == 'post':
-        data['categories'] = [cats[f'cat-{p["cid"]}']] if p['cid'] and cats.get(f'cat-{p["cid"]}') else []
+        cs = p.get('catslug') or f'cat-{p["cid"]}'
+        data['categories'] = [cats[cs]] if p['cid'] and cats.get(cs) else []
         data['tags'] = [tags[t] for t in p['tags'] if tags.get(t)]
     r, _ = api('POST', route(kind), body=data)
     manifest['posts'][str(p['nid'])] = r['id']; manifest['kinds'][str(p['nid'])] = kind; made += 1
